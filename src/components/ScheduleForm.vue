@@ -102,8 +102,9 @@ function changeZone(value: string) {
       </fieldset>
       <FieldError :message="fieldErrors.env_from" />
     </section>
-    <div class="flex justify-end gap-3">
-      <RouterLink class="button" :to="editor.id ? `/schedules/${editor.id}` : '/schedules'">{{ t('common.cancel') }}</RouterLink><button class="button-primary" type="submit" :disabled="editor.busy.value">{{ t('common.save') }}</button>
+    <div class="flex flex-wrap gap-3">
+      <button class="button-primary" type="submit" :disabled="editor.busy.value">{{ t('common.save') }}</button>
+      <RouterLink class="button" :to="editor.id ? `/schedules/${editor.id}` : '/schedules'">{{ t('common.cancel') }}</RouterLink>
     </div>
   </form>
 </template>

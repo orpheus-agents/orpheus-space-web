@@ -21,13 +21,14 @@ is not shown yet.
 
 The repeat rule is edited as a plain schedule: daily, weekdays, chosen days, monthly,
 every few hours or minutes, or a raw five-field cron. The expression stays the API
-model and is shown with a sentence from `cronstrue`; preview lists the next five
+model. The form, list and schedule card show a sentence from `cronstrue`, with
+the expression available on hover; preview lists the next five
 runs in the schedule's time zone, which is picked from a searchable list.
 
 History and occurrence cards use stored Space data: dispatch state, observed run
-status, error codes with explanations, timings and duration. The result button
-explicitly reads the core; result errors and `fetched_at` remain separate from the
-worker's stored status and `observed_at`. There is no automatic result polling.
+status, error codes with explanations, timings and duration. Opening run details also loads the result from the core. The open card refreshes
+both its stored data and result; closing it stops these requests. Result errors
+and `fetched_at` remain separate from the worker's stored status and `observed_at`.
 Schedule prompts and run results render Markdown with highlighted code and a
 separate YAML front matter block, as in Orpheus Web session messages. Editing
 uses a lazily loaded CodeMirror field with Markdown/YAML highlighting, undo/redo,
@@ -119,7 +120,7 @@ so the user can remove them.
 
 - `make check`: generated contract, OpenAPI/Docker/frontend lint, tool/unit tests,
   unused dependencies, vulnerabilities and production build.
-- `make test-e2e`: browser fixtures, editing, history, explicit results and themes.
+- `make test-e2e`: browser fixtures, editing, history, automatic run results and themes.
 - `make test-integration`: real nginx + Space + Postgres, anonymous and SAML CRUD,
   CSRF/logout, separate Keycloak client access, with core offline.
 - `make docker-build`: production image. Static assets build on BUILDPLATFORM;
