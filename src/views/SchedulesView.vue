@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { Status } from '../api/generated'
 import { useSchedules } from '../composables/useSchedules'
 import { useSettings } from '../composables/useSettings'
@@ -12,6 +13,11 @@ import OccurrenceStatus from '../components/OccurrenceStatus.vue'
 import RelativeTime from '../components/RelativeTime.vue'
 import CronDescription from '../components/CronDescription.vue'
 const { t, locale } = useI18n()
+const router = useRouter()
+function openSchedule(event: MouseEvent, id: string) {
+  if (event.target instanceof Element && event.target.closest('a, button, input, select, textarea, label')) return
+  void router.push(`/schedules/${id}`)
+}
 const { timeZone } = useSettings()
 const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned, status, cursor, apply, page, toggle, busy } =
   useSchedules()
@@ -52,7 +58,7 @@ const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned,
           </tr>
         </thead>
         <tbody>
-          <tr v-for="task in data.items" :key="task.id">
+          <tr v-for="task in data.items" :key="task.id" class="cursor-pointer" @click="openSchedule($event, task.id)">
             <td class="min-w-48">
               <RouterLink :to="`/schedules/${task.id}`" class="font-semibold hover:underline">{{ task.name }}</RouterLink>
             </td>
