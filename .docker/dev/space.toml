@@ -1,0 +1,5 @@
+[execution.agent]
+profile = "default"
+[execution.sandbox]
+template = "fixture"
+env_from = ["A"]

@@ -1,0 +1,27 @@
+services:
+  space:
+    environment:
+      ORPHEUS_BROWSER_AUTH: saml
+      ORPHEUS_PUBLIC_URL: https://localhost:${ORPHEUS_SPACE_WEB_HTTPS_PORT:-19443}
+      SAML_SP_ENTITY_ID: orpheus-space-web-test
+      SAML_IDP_METADATA_FILE: /auth/idp.xml
+      SAML_SP_CERT_FILE: /auth/cert.pem
+      SAML_SP_KEY_FILE: /auth/key.pem
+    volumes: [../../.integration-auth:/auth:ro]
+  ui:
+    ports: ['127.0.0.1:${ORPHEUS_SPACE_WEB_HTTPS_PORT:-19443}:8443']
+    volumes:
+      - ../../.integration-auth:/auth:ro
+      - ./tls.conf:/etc/nginx/extra/tls.conf:ro
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    command: [start-dev, --import-realm]
+    environment:
+      KC_HOSTNAME: https://localhost:${ORPHEUS_SPACE_WEB_IDP_PORT:-19444}
+      KC_HTTPS_CERTIFICATE_FILE: /auth/cert.pem
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /auth/key.pem
+    ports: ['127.0.0.1:${ORPHEUS_SPACE_WEB_IDP_PORT:-19444}:8443']
+    volumes:
+      - ../../.integration-auth:/auth:ro
+      - ../../.integration-auth/realm.json:/opt/keycloak/data/import/realm.json:ro
+    tmpfs: [/opt/keycloak/data]
