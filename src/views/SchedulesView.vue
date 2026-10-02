@@ -10,6 +10,7 @@ import EmptyState from '../components/EmptyState.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import OccurrenceStatus from '../components/OccurrenceStatus.vue'
 import RelativeTime from '../components/RelativeTime.vue'
+import CronDescription from '../components/CronDescription.vue'
 const { t, locale } = useI18n()
 const { timeZone } = useSettings()
 const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned, status, cursor, apply, page, toggle, busy } =
@@ -44,7 +45,7 @@ const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned,
             <th>{{ t('schedule.status') }}</th>
             <th>{{ t('schedule.lastRun') }}</th>
             <th>{{ t('schedule.next') }}</th>
-            <th>{{ t('schedule.cron') }}</th>
+            <th>{{ t('schedule.timing') }}</th>
             <th>
               <span class="sr-only">{{ t('common.actions') }}</span>
             </th>
@@ -58,14 +59,14 @@ const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned,
             <td>{{ task.owner_email ?? t('schedule.shared') }}</td>
             <td><StatusBadge :tone="task.status === Status.active ? 'ok' : 'muted'" :label="t(`status.${task.status}`)" /></td>
             <td class="whitespace-nowrap">
-              <template v-if="task.last_occurrence"><OccurrenceStatus :occurrence="task.last_occurrence" /><span class="ml-2 font-mono text-xs text-muted"><RelativeTime :timestamp="task.last_occurrence.scheduled_at" /></span></template>
+              <div v-if="task.last_occurrence" class="flex items-center gap-2 font-mono text-xs"><OccurrenceStatus :occurrence="task.last_occurrence" /><RelativeTime class="text-muted" :timestamp="task.last_occurrence.scheduled_at" /></div>
               <span v-else class="text-sm text-muted">{{ t('schedule.neverRan') }}</span>
             </td>
-            <td class="whitespace-nowrap font-mono">
+            <td class="whitespace-nowrap font-mono text-xs">
               {{ task.next_run_at ? formatDate(task.next_run_at, locale, timeZone) : t('common.none') }}
             </td>
-            <td class="font-mono">
-              <span class="whitespace-nowrap">{{ task.cron }}</span><span class="ml-2 whitespace-nowrap text-muted">{{ task.timezone }}</span>
+            <td>
+              <CronDescription :expression="task.cron" /><span class="ml-2 whitespace-nowrap text-xs text-muted">{{ task.timezone }}</span>
             </td>
             <td>
               <button class="button" :disabled="busy" @click="toggle(task)">

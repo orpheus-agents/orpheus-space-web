@@ -28,13 +28,13 @@ const noRun = computed(() => run.value !== null && run.value.run_id === null && 
       <h3 class="panel-title">{{ t('history.run') }}</h3>
       <button class="button" @click="$emit('close')">{{ t('common.close') }}</button>
     </div>
-    <PageState v-if="!run" :loading="state.card.pending.value" :error="state.card.error.value" @retry="state.card.refresh" />
+    <PageState v-if="!run" :loading="state.card.pending.value" :error="state.card.error.value" @retry="state.refresh" />
     <template v-else>
       <RefreshStatus
         :updated-at="state.card.updatedAt.value"
         :disconnected="state.card.disconnected.value"
-        :pending="state.card.pending.value"
-        @refresh="state.card.refresh"
+        :pending="state.card.pending.value || (state.active.value && state.resultPending.value)"
+        @refresh="state.refresh"
       />
       <dl class="my-5 grid gap-4 break-all text-sm sm:grid-cols-2">
         <div>
@@ -80,13 +80,10 @@ const noRun = computed(() => run.value !== null && run.value.run_id === null && 
       </dl>
       <p v-if="run.sync_error_code" class="mb-4 text-sm text-danger-ink">{{ t('history.syncError') }} <ErrorCode :code="run.sync_error_code" /></p>
       <p v-if="noRun" class="border-t border-line pt-5 text-sm text-muted">{{ t('history.noRun') }}</p>
-      <div v-else-if="state.active.value" class="border-t border-line pt-5">
-        <p class="mb-3 text-sm text-muted">{{ t('history.resultHint') }}</p>
-        <button class="button" :disabled="state.resultPending.value" @click="state.loadResult">
-          {{ state.result.value ? t('history.refreshResult') : t('history.loadResult') }}
-        </button>
+      <div v-else-if="state.active.value" class="border-t border-line pt-5" :aria-busy="state.resultPending.value">
+        <p v-if="state.resultPending.value && !state.result.value" class="text-sm text-muted">{{ t('common.loading') }}</p>
         <p v-if="state.resultProblem.value" class="mt-4 text-sm text-danger-ink" role="alert">{{ t(state.resultProblem.value) }}</p>
-        <div v-if="state.result.value" class="mt-5 border-t border-line pt-5">
+        <div v-if="state.result.value" :class="{ 'mt-5': state.resultProblem.value }">
           <p class="mb-4 flex flex-wrap items-center gap-2 font-mono text-xs text-muted">
             <span>{{ t('history.fetched', { time: formatDate(state.result.value.fetched_at, locale, timeZone) }) }}</span><span aria-hidden="true">·</span><OccurrenceStatus :status="state.result.value.run_status" />
           </p>

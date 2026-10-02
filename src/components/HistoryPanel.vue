@@ -45,9 +45,9 @@ watch(state.selected, async (selected) => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="run in data.items" :key="run.id" :class="{ 'bg-surface-subtle': state.selected.value === run.id }">
+          <tr v-for="run in data.items" :key="run.id" class="cursor-pointer" :class="{ 'bg-surface-subtle': state.selected.value === run.id }" @click="state.selected.value = run.id">
             <td class="whitespace-nowrap">
-              <button class="text-left underline underline-offset-4" @click="state.selected.value = run.id">
+              <button class="text-left underline underline-offset-4" :aria-expanded="state.selected.value === run.id" @click.stop="state.selected.value = run.id">
                 {{ formatDate(run.scheduled_at, locale, timeZone) }}
               </button>
             </td>

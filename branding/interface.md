@@ -62,8 +62,10 @@ Fonts are in `fonts/`; body text uses the system sans and loads nothing.
   a 1 px `ink` border.
 - Forms: a schedule's repeat rule is a plain choice (every day, weekdays, chosen
   days, monthly, every few hours or minutes) with a sentence under it; the raw
-  cron stays visible in mono and editable in the last option. Validation from
-  the API is a `danger-ink` line under its field, not only a toast.
+  cron appears in the sentence’s title on hover and is editable in the last option.
+  Lists and detail cards use the same sentence in the regular body font. Validation from
+  the API is a `danger-ink` line under its field, not only a toast. Place form
+  actions below the fields, aligned left: Save first, then Cancel.
 
 ## Components
 

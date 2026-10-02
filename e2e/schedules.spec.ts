@@ -26,7 +26,7 @@ test('new schedule uses the signed-in email and hides empty extra ENV choices', 
   await expect(owner).toHaveValue('alice@example.com')
 })
 
-test('list, editing, history and explicit result work in both themes', async ({ page }) => {
+test('list, editing, history and automatic result work in both themes', async ({ page }) => {
   let task = schedule(),
     resultCalls = 0
   await page.addInitScript(() => {
@@ -88,10 +88,8 @@ test('list, editing, history and explicit result work in both themes', async ({ 
   await expect(page.getByRole('cell', { name: 'Completed' })).toBeVisible()
   await page.locator('tbody button').click()
   await expect(page.getByRole('heading', { name: 'Run details' })).toBeVisible()
-  expect(resultCalls).toBe(0)
-  await page.getByRole('button', { name: 'Load result', exact: true }).click()
   await expect(page.getByText('Complete', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Refresh result', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^(Load|Refresh) result$/ })).toHaveCount(0)
   expect(resultCalls).toBe(1)
   await expect(page.locator('.prose-output img')).toHaveCount(0)
   await page.getByRole('button', { name: 'Theme', exact: true }).click()
@@ -218,4 +216,69 @@ test('schedule prompts render Markdown and front matter while preserving the edi
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.locator('.prose-output')).toHaveText('Updated plain text')
   await expect(page.locator('.frontmatter')).toHaveCount(0)
+})
+
+test('readable schedules, aligned list data and clickable history rows', async ({ page }) => {
+  const run = occurrence({ scheduled_at: '2026-10-02T13:00:00Z', observed_at: '2026-10-02T13:07:00Z', execution_started_at: '2026-10-02T13:00:00Z', finished_at: '2026-10-02T13:07:00Z' })
+  const task = schedule({
+    name: 'Мониторинг всплесков HTTP 500 ядра', owner_email: 'operator@example.com',
+    cron: '*/30 * * * *', env_from: [], next_run_at: '2026-10-02T14:00:00Z', last_occurrence: run,
+    prompt: '## Мониторинг ошибок\n\nКаждые 30 минут проверяй production-ошибки и сообщай только о новых существенных всплесках.\n\n- Сравни события с обычным фоном.\n- Проверь, что об ошибке ещё не сообщали.',
+  })
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.addInitScript(() => {
+    localStorage.setItem('orpheus_locale', 'ru')
+    localStorage.setItem('orpheus_timezone', 'Europe/Moscow')
+    localStorage.setItem('orpheus_theme', 'light')
+  })
+  await page.route('**/api/v1/**', (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/auth/session')) return route.fulfill({ json: {
+      mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null,
+    } })
+    if (path.endsWith('/settings')) return route.fulfill({ json: { base_env_from: [], allowed_env_from: [], browser_auth: 'anonymous' } })
+    if (path.endsWith('/result')) return route.fulfill({ json: {
+      run_status: 'completed', fetched_at: timestamp,
+      final_message: { id: occurrenceID, text: '**Проверка завершена.** Новых существенных всплесков нет.', created_at: timestamp }, error: null,
+    } })
+    if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [run], next_cursor: null } })
+    if (path.endsWith('/' + occurrenceID)) return route.fulfill({ json: run })
+    if (path === '/api/v1/schedules') return route.fulfill({ json: { items: [task], next_cursor: null } })
+    return route.fulfill({ json: task })
+  })
+  await page.goto('/schedules')
+  await expect(page.getByRole('columnheader', { name: 'Расписание', exact: true })).toBeVisible()
+  const sentence = page.locator('span[title]').filter({ hasText: /^Каждые 30 минут$/ })
+  await expect(sentence).toHaveAttribute('title', task.cron)
+  const cells = page.locator('tbody tr').first().locator('td')
+  await expect(cells.nth(5)).not.toContainText(task.cron)
+  const status = cells.nth(3).locator('.inline-flex')
+  const time = cells.nth(3).locator('time')
+  const statusBox = (await status.boundingBox())!, timeBox = (await time.boundingBox())!
+  expect(Math.abs(statusBox.y + statusBox.height - timeBox.y - timeBox.height)).toBeLessThan(1)
+  expect(await cells.nth(4).evaluate((el) => getComputedStyle(el).fontSize)).toBe(await time.evaluate((el) => getComputedStyle(el).fontSize))
+  await page.screenshot({ path: 'test-results/schedule-list-ru.png', fullPage: true, animations: 'disabled' })
+  await page.getByRole('link', { name: task.name }).click()
+  await expect(page.getByRole('heading', { name: task.name, exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'История запусков', exact: true })).toBeVisible()
+  await expect(sentence).toHaveAttribute('title', task.cron)
+  await page.screenshot({ path: 'test-results/schedule-card-ru.png', fullPage: true, animations: 'disabled' })
+  const row = page.locator('tbody tr').first()
+  await expect(row).toHaveCSS('cursor', 'pointer')
+  // A cell away from the date opens the same card; the date button stays keyboard-accessible.
+  await row.locator('td').nth(2).click()
+  await expect(page.getByText('Проверка завершена.', { exact: true })).toBeVisible()
+  await page.getByRole('heading', { name: 'Данные запуска', exact: true }).scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'test-results/schedule-history-ru.png', fullPage: true, animations: 'disabled' })
+  await page.getByRole('button', { name: 'Закрыть', exact: true }).click()
+  const date = row.getByRole('button')
+  await date.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { name: 'Данные запуска', exact: true })).toBeVisible()
+  await page.goto(`/schedules/${taskID}/edit`)
+  await expect(sentence).toHaveAttribute('title', task.cron)
+  await expect(page.locator('form')).not.toContainText(task.cron)
+  await expect(page.getByRole('textbox', { name: 'Задание агенту', exact: true })).toContainText('Мониторинг ошибок')
+  await page.getByRole('button', { name: 'Сохранить', exact: true }).scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'test-results/schedule-editor-ru.png', fullPage: true, animations: 'disabled' })
 })

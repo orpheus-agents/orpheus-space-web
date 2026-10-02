@@ -1,29 +1,19 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { build, convert, describe, formatTime, HOUR_STEPS, KINDS, MINUTE_STEPS, parse, parseTime, WEEK, type Plan, type Weekday } from '../cron'
+import { build, convert, formatTime, HOUR_STEPS, KINDS, MINUTE_STEPS, parse, parseTime, WEEK, type Plan, type Weekday } from '../cron'
+import CronDescription from './CronDescription.vue'
 /** Edits a five-field cron as a plain schedule; the expression stays the model. */
 const props = defineProps<{ modelValue: string; error?: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 const { t, locale } = useI18n()
 const plan = ref<Plan>(parse(props.modelValue))
-const description = ref('')
 watch(
   () => props.modelValue,
   (value) => {
     if (value !== (build(plan.value) ?? '')) plan.value = parse(value)
   },
 )
-watch(
-  () => props.modelValue,
-  async (value) => {
-    description.value = value.trim() ? await describe(value, locale.value) : ''
-  },
-  { immediate: true },
-)
-watch(locale, async () => {
-  description.value = props.modelValue.trim() ? await describe(props.modelValue, locale.value) : ''
-})
 function apply(next: Plan) {
   plan.value = next
   emit('update:modelValue', build(next) ?? '')
@@ -104,6 +94,6 @@ const incomplete = computed(() => plan.value.kind === 'weekly' && plan.value.day
       @input="apply({ kind: 'custom', expression: ($event.target as HTMLInputElement).value })"
     ><span class="mt-2 block text-xs text-muted">{{ t('cron.expressionHint') }}</span></label>
     <p v-if="error" class="text-sm text-danger-ink" role="alert">{{ error }}</p>
-    <p v-else-if="description" class="text-sm"><span class="text-muted">{{ description }}</span> <span class="ml-1 whitespace-nowrap font-mono text-xs text-muted">{{ modelValue }}</span></p>
+    <p v-else class="text-sm text-muted"><CronDescription :expression="modelValue" /></p>
   </div>
 </template>

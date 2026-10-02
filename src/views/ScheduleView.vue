@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CronDescription from '../components/CronDescription.vue'
 import { useI18n } from 'vue-i18n'
 import { Status, SessionMode } from '../api/generated'
 import { useSchedule } from '../composables/useSchedule'
@@ -46,8 +47,8 @@ const { data, error, pending, updatedAt, disconnected, refresh, toggle, busy, co
           <dd>{{ data.owner_email ?? t('schedule.shared') }}</dd>
         </div>
         <div>
-          <dt class="caps mb-2 text-muted">{{ t('schedule.cron') }}</dt>
-          <dd class="font-mono"><span class="whitespace-nowrap">{{ data.cron }}</span> · {{ data.timezone }}</dd>
+          <dt class="caps mb-2 text-muted">{{ t('schedule.timing') }}</dt>
+          <dd><CronDescription :expression="data.cron" /><span class="ml-2 whitespace-nowrap text-muted">{{ data.timezone }}</span></dd>
         </div>
         <div>
           <dt class="caps mb-2 text-muted">{{ t('schedule.next') }}</dt>
