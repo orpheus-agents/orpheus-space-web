@@ -27,6 +27,7 @@ Fonts are in `fonts/`; body text uses the system sans and loads nothing.
 | Role | Face | Size | Notes |
 |---|---|---|---|
 | Product word (`Space`) | Besley Italic 500 | 21 px | next to the logo only; sized to the wordmark's cap height; Latin subset in `fonts/` |
+| “Soon” note | Besley Italic 500, Cyrillic in Literata Italic 500 | 11 px | superscript in the item's colour; Cyrillic subset in `fonts/` |
 | Page title | Martian Grotesk SemiExpanded ExtraBold | 40 px | tracking −0.035 em |
 | Panel title | Martian Grotesk SemiExpanded Bold | 22 px | tracking −0.025 em |
 | Navigation, buttons | Martian Mono Condensed | 12 px | uppercase, tracking 0.08 em; active item SemiBold |
@@ -41,7 +42,8 @@ Fonts are in `fonts/`; body text uses the system sans and loads nothing.
 - Page gutter 32 px, content up to 1536 px, 8 px rhythm.
 - Header 56 px: logo 22 px tall, mono navigation, 1 px rule below. The active
   item has a 2 px accent underline. A section that is not built yet stays in the
-  navigation as muted text with `· soon`, not a link. On the right: settings as
+  navigation as muted text, not a link, with a small superscript “soon” after its
+  name in the same colour — never a chip or an accent. On the right: settings as
   icon menus (language, time zone, theme), then a 1 px divider, the account name
   in mono and the sign-out icon.
 - Product lockup: the Orpheus logo, then the product word in the italic serif,

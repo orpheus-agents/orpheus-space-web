@@ -31,7 +31,7 @@ export default {
         display: ['Martian Grotesk', ...defaultTheme.fontFamily.sans],
         mono: ['Martian Mono', ...defaultTheme.fontFamily.mono],
         code: ['JetBrains Mono', ...defaultTheme.fontFamily.mono],
-        brand: ['Besley', ...defaultTheme.fontFamily.serif],
+        brand: ['Besley', 'Literata', ...defaultTheme.fontFamily.serif],
       },
       letterSpacing: {
         caps: '0.08em',

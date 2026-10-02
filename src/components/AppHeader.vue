@@ -45,7 +45,7 @@ function changeLocale(value: 'en' | 'ru') {
           <RouterLink v-if="item.to" :to="item.to" class="nav-link" :class="{ selected: route.path.startsWith(item.to) }">
             {{ t(`nav.${item.key}`) }}
           </RouterLink>
-          <span v-else class="nav-link cursor-default text-muted/70 hover:text-muted/70" aria-disabled="true">{{ t(`nav.${item.key}`) }} <span class="ml-1">· {{ t('nav.soon') }}</span></span>
+          <span v-else class="nav-link relative cursor-default text-muted/70 hover:text-muted/70" aria-disabled="true">{{ t(`nav.${item.key}`) }}<span class="sr-only">, </span><span class="soon-mark">{{ t('nav.soon') }}</span></span>
         </template>
       </nav>
       <div class="ml-auto flex items-center gap-1">
