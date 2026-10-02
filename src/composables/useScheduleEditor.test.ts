@@ -201,3 +201,16 @@ it('does not mark a field for a validation response that arrived after the field
   await saving
   expect(state.fieldErrors.cron).toBeUndefined()
 })
+
+it('rejects an empty prompt before sending and clears the field error when edited', async () => {
+  const { state, fetcher } = await setup()
+  fetcher.mockClear()
+  state.form.prompt = '  \n '
+  await flushPromises()
+  await state.save()
+  expect(fetcher).not.toHaveBeenCalled()
+  expect(state.fieldErrors.prompt).toBe('Required.')
+  state.form.prompt = '# Work'
+  await flushPromises()
+  expect(state.fieldErrors.prompt).toBeUndefined()
+})

@@ -110,6 +110,11 @@ export function useScheduleEditor() {
     return { ...form, model: form.model.trim() || null, owner_email: form.owner_email.trim() || null, env_from: [...form.env_from] }
   }
   async function save() {
+    if (!form.prompt.trim()) {
+      fieldErrors.prompt = t('validation.required')
+      push(t('validation.failed'))
+      return
+    }
     const body = payload()
     const serialized = JSON.stringify(body)
     await action.run(

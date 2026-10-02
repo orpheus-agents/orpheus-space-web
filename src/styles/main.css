@@ -142,6 +142,24 @@ textarea {
   .frontmatter { @apply overflow-auto border border-line bg-surface px-3 py-2 font-code text-[11px] leading-[1.35] text-muted; }
   .frontmatter .hljs-attr, .frontmatter .hljs-attribute { @apply text-accent-ink; }
   .frontmatter .hljs-string, .frontmatter .hljs-number, .frontmatter .hljs-literal { @apply text-ink; }
+  .markdown-editor .cm-editor { @apply h-96 min-h-72 resize-y overflow-hidden border border-line bg-surface-raised text-sm text-ink; }
+  .markdown-editor .cm-editor.cm-focused { @apply outline outline-2 outline-offset-2 outline-accent; }
+  .markdown-editor .cm-scroller { @apply overflow-auto font-code leading-6; }
+  .markdown-editor .cm-content { @apply min-h-full py-3; caret-color: rgb(var(--color-ink)); }
+  .markdown-editor .cm-line { @apply px-3; }
+  .markdown-editor .cm-placeholder { @apply text-muted; }
+  .markdown-editor .cm-cursor { border-left-color: rgb(var(--color-ink)); }
+  .markdown-editor .cm-editor > .cm-scroller > .cm-selectionLayer .cm-selectionBackground,
+  .markdown-editor .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground { @apply bg-accent/20; }
+  .markdown-editor .md-heading { @apply font-bold text-accent-ink; }
+  .markdown-editor .md-strong { @apply font-bold; }
+  .markdown-editor .md-emphasis { @apply italic; }
+  .markdown-editor .md-strike { @apply line-through; }
+  .markdown-editor .md-link { @apply text-accent-ink underline; }
+  .markdown-editor .md-marker, .markdown-editor .md-comment { @apply text-muted; }
+  .markdown-editor .md-code { @apply text-ink; }
+  .markdown-editor .md-property { @apply text-accent-ink; }
+  .markdown-editor .md-literal { @apply text-danger-ink; }
   .prose-output { @apply break-words text-sm leading-6; }
   .prose-output p + p { @apply mt-2; }
   .prose-output pre { @apply my-2 overflow-auto border border-line bg-surface px-3 py-2 font-code text-xs leading-5; }
