@@ -43,7 +43,7 @@ test('list, editing, history and explicit result work in both themes', async ({ 
   })
   await page.goto('/schedules')
   await expect(page.getByRole('heading', { name: 'Schedules', exact: true })).toBeVisible()
-  await expect(page.getByRole('navigation', { name: 'Navigation' })).toContainText('Skills · soon')
+  await expect(page.getByRole('navigation', { name: 'Navigation' })).toContainText('Skills, soon')
   await expect(page.getByRole('navigation', { name: 'Navigation' }).getByRole('link')).toHaveCount(1)
   await expect(page.getByRole('cell', { name: 'No runs yet' })).toBeVisible()
   await page.getByRole('link', { name: 'Daily report' }).click()
