@@ -75,3 +75,21 @@ describe('HeaderMenu as a field', () => {
     wrapper.unmount()
   })
 })
+
+it('searches descriptions, renders notes and skips disabled choices with the keyboard', async () => {
+  const wrapper = factory(true)
+  await wrapper.setProps({ options: [
+    { value: 'retired', label: 'retired', disabled: true },
+    { value: 'default', label: 'default', description: 'General agent', note: 'Default' },
+  ] })
+  await wrapper.get('button[aria-haspopup]').trigger('click')
+  await wrapper.trigger('keydown', { key: 'ArrowDown' })
+  expect(document.activeElement?.textContent).toContain('General agent')
+  await wrapper.get('input').setValue('general')
+  expect(wrapper.findAll('[role=option]')).toHaveLength(1)
+  expect(wrapper.get('[role=option]').text()).toContain('Default')
+  await wrapper.setProps({ disabled: true })
+  expect(wrapper.find('[role=listbox]').exists()).toBe(false)
+  expect(wrapper.get('button[aria-haspopup]').attributes('disabled')).toBeDefined()
+  wrapper.unmount()
+})

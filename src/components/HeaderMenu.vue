@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends string">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, type Component } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch, type Component } from 'vue'
 import { Check, ChevronDown } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 /** An icon menu in the header, or a form field showing `text` when it is given. */
@@ -7,7 +7,10 @@ const props = defineProps<{
   label: string
   icon: Component
   modelValue: T
-  options: { value: T; label: string }[]
+  options: { value: T; label: string; description?: string | null; note?: string; disabled?: boolean }[]
+  disabled?: boolean
+  describedBy?: string
+  invalid?: boolean
   searchable?: boolean
   text?: string
   fieldId?: string
@@ -24,9 +27,9 @@ const query = ref('')
 const normalize = (value: string) => value.toLowerCase().replace(/[\s/_]+/g, ' ')
 const shown = computed(() => {
   const needle = normalize(query.value.trim())
-  return needle ? props.options.filter((option) => normalize(option.label).includes(needle)) : props.options
+  return needle ? props.options.filter((option) => normalize(`${option.label} ${option.description ?? ''}`).includes(needle)) : props.options
 })
-const items = () => [...(list.value?.querySelectorAll<HTMLElement>('[role=option]') ?? [])]
+const items = () => [...(list.value?.querySelectorAll<HTMLElement>('[role=option]:not(:disabled)') ?? [])]
 async function show() {
   open.value = true
   query.value = ''
@@ -62,6 +65,7 @@ function onFocusout(event: FocusEvent) {
 function onDocumentClick(event: MouseEvent) {
   if (!root.value?.contains(event.target as Node)) open.value = false
 }
+watch(() => props.disabled, (disabled) => { if (disabled) hide() })
 onMounted(() => document.addEventListener('click', onDocumentClick))
 onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
 </script>
@@ -74,6 +78,9 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
       :class="text === undefined ? ['icon-button', { 'bg-surface-subtle text-ink': open }] : 'field flex items-center justify-between gap-3 text-left'"
       :title="text === undefined ? label : undefined"
       :aria-label="label"
+      :aria-describedby="describedBy"
+      :aria-invalid="invalid || undefined"
+      :disabled="disabled"
       aria-haspopup="listbox"
       :aria-expanded="open"
       :aria-controls="`${id}-list`"
@@ -101,10 +108,14 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
           role="option"
           tabindex="-1"
           :aria-selected="option.value === modelValue"
+          :disabled="option.disabled"
           class="flex w-full items-center justify-between gap-4 px-3 py-2 text-left text-sm hover:bg-surface-subtle focus-visible:bg-surface-subtle"
           @click="choose(option.value)"
         >
-          <span class="min-w-0 truncate">{{ option.label }}</span><Check v-if="option.value === modelValue" class="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span class="min-w-0">
+            <span class="block break-words">{{ option.label }}<span v-if="option.note" class="ml-2 text-xs text-muted">{{ option.note }}</span></span>
+            <span v-if="option.description" class="mt-1 block whitespace-pre-line break-words text-xs text-muted">{{ option.description }}</span>
+          </span><Check v-if="option.value === modelValue" class="h-4 w-4 shrink-0" aria-hidden="true" />
         </button>
         <p v-if="!shown.length" class="px-3 py-3 text-sm text-muted">{{ t('settings.nothingFound') }}</p>
       </div>

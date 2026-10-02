@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import CronDescription from '../components/CronDescription.vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Status, SessionMode } from '../api/generated'
 import { useSchedule } from '../composables/useSchedule'
 import { useSettings } from '../composables/useSettings'
 import { formatDate } from '../format'
+import { useCatalogs } from '../composables/useCatalogs'
+import CronDescription from '../components/CronDescription.vue'
+import DescribedName from '../components/DescribedName.vue'
 import PageState from '../components/PageState.vue'
 import RefreshStatus from '../components/RefreshStatus.vue'
 import HistoryPanel from '../components/HistoryPanel.vue'
@@ -12,14 +15,17 @@ import StatusBadge from '../components/StatusBadge.vue'
 import RichText from '../components/RichText.vue'
 const { t, locale } = useI18n()
 const { timeZone } = useSettings()
+const catalogs = useCatalogs()
 const { data, error, pending, updatedAt, disconnected, refresh, toggle, busy, confirm, execute } = useSchedule()
+const profileDescription = computed(() => catalogs.profiles.data.value?.items.find((item) => item.name === data.value?.profile)?.description)
+const templateDescription = computed(() => catalogs.templates.data.value?.items.find((item) => item.name === data.value?.template)?.description)
 </script>
 <template>
   <PageState v-if="!data" :loading="pending" :error="error" @retry="refresh" />
   <template v-else>
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
       <h1 class="section-title break-words">{{ data.name }}</h1>
-      <RefreshStatus :updated-at="updatedAt" :disconnected="disconnected" :pending="pending" @refresh="refresh" />
+      <RefreshStatus :updated-at="updatedAt" :disconnected="disconnected || catalogs.disconnected.value" :pending="pending || catalogs.pending.value" @refresh="refresh(); catalogs.refresh()" />
     </div>
     <div v-if="!data.deleted_at" class="mb-6 flex flex-wrap gap-3">
       <RouterLink class="button-primary" :to="`/schedules/${data.id}/edit`">{{ t('schedule.edit') }}</RouterLink>
@@ -53,6 +59,14 @@ const { data, error, pending, updatedAt, disconnected, refresh, toggle, busy, co
         <div>
           <dt class="caps mb-2 text-muted">{{ t('schedule.next') }}</dt>
           <dd>{{ data.next_run_at ? formatDate(data.next_run_at, locale, timeZone) : t('common.none') }}</dd>
+        </div>
+        <div>
+          <dt class="caps mb-2 text-muted">{{ t('schedule.profile') }}</dt>
+          <dd class="break-words"><DescribedName :name="data.profile" :description="profileDescription" /></dd>
+        </div>
+        <div>
+          <dt class="caps mb-2 text-muted">{{ t('schedule.template') }}</dt>
+          <dd class="break-words"><DescribedName :name="data.template" :description="templateDescription" /></dd>
         </div>
         <div>
           <dt class="caps mb-2 text-muted">{{ t('schedule.model') }}</dt>

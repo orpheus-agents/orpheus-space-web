@@ -3,12 +3,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ApiError, get, write } from '../api/client'
 import { SessionMode, Status, type CreateSchedule, type Settings } from '../api/generated'
+import { useCatalogs } from './useCatalogs'
 import { useSettings } from './useSettings'
 import { useAction } from './useAction'
 import { useToasts } from './useToasts'
 import { useAuthSession } from './useAuth'
 
-const FIELDS = ['name', 'prompt', 'cron', 'timezone', 'status', 'model', 'owner_email', 'session_mode', 'env_from'] as const
+const FIELDS = ['name', 'prompt', 'cron', 'timezone', 'status', 'model', 'owner_email', 'session_mode', 'env_from', 'profile', 'template'] as const
 export type Field = (typeof FIELDS)[number]
 
 export function useScheduleEditor() {
@@ -26,10 +27,23 @@ export function useScheduleEditor() {
     timezone: timeZone.value,
     status: Status.active,
     model: '',
+    profile: '',
+    template: '',
     owner_email: id ? '' : (session.value?.user?.email ?? ''),
     session_mode: SessionMode.new,
     env_from: [] as string[],
   })
+  const catalogs = useCatalogs()
+  let originalSelection: { profile: string; template: string } | undefined
+  for (const field of ['profile', 'template'] as const) {
+    const source = field === 'profile' ? catalogs.profiles : catalogs.templates
+    let initialized = false
+    watch(source.data, (data) => {
+      if (id || initialized || !data) return
+      initialized = true
+      if (!form[field]) form[field] = data.items.find((item) => item.is_default)?.name ?? ''
+    })
+  }
   /** Server-side validation problems by field; the API names the field, the dictionary explains it. */
   const fieldErrors = reactive<Partial<Record<Field, string>>>({})
   const settings = shallowRef<Settings | null>(null),
@@ -66,9 +80,12 @@ export function useScheduleEditor() {
       ])
       if (controller.signal.aborted) return
       settings.value = options
-      if (task)
+      if (task) {
+        originalSelection = { profile: task.profile, template: task.template }
         Object.assign(form, {
           name: task.name,
+          profile: task.profile,
+          template: task.template,
           prompt: task.prompt,
           cron: task.cron,
           timezone: task.timezone,
@@ -78,6 +95,7 @@ export function useScheduleEditor() {
           session_mode: task.session_mode,
           env_from: [...task.env_from],
         })
+      }
     } catch (cause) {
       if (!controller.signal.aborted) error.value = cause
     } finally {
@@ -107,7 +125,12 @@ export function useScheduleEditor() {
     previewBusy.value = false
   }
   function payload(): CreateSchedule {
-    return { ...form, model: form.model.trim() || null, owner_email: form.owner_email.trim() || null, env_from: [...form.env_from] }
+    const body: CreateSchedule = { ...form, model: form.model.trim() || null, owner_email: form.owner_email.trim() || null, env_from: [...form.env_from] }
+    if (id && originalSelection) {
+      if (form.profile === originalSelection.profile) delete body.profile
+      if (form.template === originalSelection.template) delete body.template
+    }
+    return body
   }
   async function save() {
     if (!form.prompt.trim()) {
@@ -115,6 +138,10 @@ export function useScheduleEditor() {
       push(t('validation.failed'))
       return
     }
+    for (const field of ['profile', 'template'] as const) {
+      if (!form[field]) fieldErrors[field] = t(`validation.${field}`)
+    }
+    if (!form.profile || !form.template) { push(t('validation.failed')); return }
     const body = payload()
     const serialized = JSON.stringify(body)
     await action.run(
@@ -139,6 +166,7 @@ export function useScheduleEditor() {
   })
   return {
     id,
+    catalogs,
     form,
     fieldErrors,
     settings,

@@ -1,0 +1,20 @@
+[templates.fixture]
+description = "Standard integration sandbox"
+[templates."reports:v2"]
+description = "Tools for reports"
+
+[profiles.default]
+description = "General agent"
+harness = "codex"
+model = "fixture-model"
+[profiles.default.auth]
+mode = "api_key"
+api_key_env = "OPENAI_API_KEY"
+
+[profiles.research]
+description = "Search and compare sources"
+harness = "codex"
+model = "research-model"
+[profiles.research.auth]
+mode = "api_key"
+api_key_env = "OPENAI_API_KEY"
