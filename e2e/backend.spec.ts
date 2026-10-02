@@ -13,6 +13,7 @@ test('real nginx and Space support browser CRUD with the core offline', async ({
     expect((await callback).status()).toBe(303)
   }
   await expect(page.getByRole('heading', { name: 'New schedule' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: /^Owner email/ })).toHaveValue(saml ? 'operator@example.test' : '')
   await page.getByLabel('Name', { exact: true }).fill('Browser integration')
   await page.getByLabel('Prompt', { exact: true }).fill('Test with core offline')
   await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('paused')
@@ -38,6 +39,7 @@ test('real nginx and Space support browser CRUD with the core offline', async ({
   expect((await page.request.patch(`/api/v1/schedules/${id}`, { data: { name: 'Forbidden' } })).status()).toBe(403)
   expect((await page.request.get('/api/v1/schedules', { headers: { Authorization: 'Bearer invalid' } })).status()).toBe(401)
   await page.getByRole('link', { name: 'Edit schedule' }).click()
+  await expect(page.getByRole('textbox', { name: /^Owner email/ })).toHaveValue(saml ? 'operator@example.test' : '')
   await page.getByRole('textbox', { name: /^Owner email/ }).fill('other@example.com')
   await page.getByRole('combobox', { name: 'Session', exact: true }).selectOption('reuse')
   await page.getByRole('button', { name: 'Save', exact: true }).click()

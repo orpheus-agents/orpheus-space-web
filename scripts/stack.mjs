@@ -82,6 +82,10 @@ async function setupSAML() {
         enabled: true,
         protocol: 'saml',
         redirectUris: [`https://localhost:${httpsPort}/auth/callback`],
+        protocolMappers: [{
+          name: 'email', protocol: 'saml', protocolMapper: 'saml-user-property-mapper',
+          config: { 'user.attribute': 'email', 'attribute.name': 'email', 'attribute.nameformat': 'Basic' },
+        }],
         attributes: {
           'saml.assertion.signature': 'true',
           'saml.authnstatement': 'true',

@@ -1,6 +1,31 @@
 import { expect, test } from '@playwright/test'
 import { schedule, occurrence, taskID, occurrenceID, timestamp } from '../src/test/fixtures'
 
+test('new schedule uses the signed-in email and hides empty extra ENV choices', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
+  await page.route('**/api/v1/**', (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/auth/session')) return route.fulfill({ json: {
+      mode: 'saml', authenticated: true, read_access: true, write_access: true,
+      user: { subject: 'operator', display_name: 'Operator', email: 'operator@example.com' }, expires_at: timestamp,
+    } })
+    if (path.endsWith('/settings')) return route.fulfill({ json: {
+      base_env_from: ['A'], allowed_env_from: ['A'], browser_auth: 'saml',
+    } })
+    return route.fulfill({ json: schedule() })
+  })
+  await page.goto('/schedules/new')
+  const owner = page.getByRole('textbox', { name: /^Owner email/ })
+  await expect(owner).toHaveValue('operator@example.com')
+  await expect(page.getByRole('group', { name: 'Additional ENV names' })).toHaveCount(0)
+  await expect(page.getByRole('checkbox')).toHaveCount(0)
+  await owner.fill('')
+  await expect(owner).toHaveValue('')
+  await page.screenshot({ path: 'test-results/new-schedule-email.png', fullPage: true })
+  await page.goto(`/schedules/${taskID}/edit`)
+  await expect(owner).toHaveValue('alice@example.com')
+})
+
 test('list, editing, history and explicit result work in both themes', async ({ page }) => {
   let task = schedule(),
     resultCalls = 0

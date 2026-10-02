@@ -1,9 +1,20 @@
-import { onMounted, onUnmounted, ref, shallowRef } from 'vue'
+import { inject, onMounted, onUnmounted, provide, ref, shallowRef, type InjectionKey, type ShallowRef } from 'vue'
 import { get, logout, onAccessFailure } from '../api/client'
 import { AuthSessionMode, type AuthSession } from '../api/generated'
 
+const sessionKey: InjectionKey<Readonly<ShallowRef<AuthSession | null>>> = Symbol('auth-session')
+export function provideAuthSession(session: Readonly<ShallowRef<AuthSession | null>>) {
+  provide(sessionKey, session)
+}
+export function useAuthSession() {
+  const session = inject(sessionKey)
+  if (!session) throw new Error('Auth session provider is missing')
+  return session
+}
+
 export function useAuth() {
   const session = shallowRef<AuthSession | null>(null)
+  provideAuthSession(session)
   const state = ref<'loading' | 'ready' | 'signin' | 'disabled' | 'forbidden' | 'error'>('loading')
   const pending = ref(false)
   let controller = new AbortController()
