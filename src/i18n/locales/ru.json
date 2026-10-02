@@ -95,6 +95,7 @@
     "modelOptional": "Модель (необязательно)",
     "modelDefault": "Из профиля агента",
     "modelFromProfile": "Из профиля: {model}",
+    "modelHint": "Заменяет модель профиля, например, на младшую.",
     "preview": "Показать будущие запуски",
     "previewZone": "Время в {zone}",
     "execution": "Выполнение",
