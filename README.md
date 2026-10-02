@@ -30,7 +30,9 @@ explicitly reads the core; result errors and `fetched_at` remain separate from t
 worker's stored status and `observed_at`. There is no automatic result polling.
 Schedule prompts and run results render Markdown with highlighted code and a
 separate YAML front matter block, as in Orpheus Web session messages. Editing
-preserves the raw prompt text. Markdown is sanitized and remote images render
+uses a lazily loaded CodeMirror field with Markdown/YAML highlighting, undo/redo,
+line wrapping and Tab navigation to the next field. It preserves the raw prompt
+text. Rendered Markdown is sanitized and remote images render
 as links.
 
 ## Development

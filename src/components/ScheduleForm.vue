@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useId } from 'vue'
+import { computed, defineAsyncComponent, useId } from 'vue'
 import { Clock3 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { SessionMode, Status } from '../api/generated'
@@ -12,6 +12,8 @@ import HeaderMenu from './HeaderMenu.vue'
 const { editor } = defineProps<{ editor: ReturnType<typeof useScheduleEditor> }>()
 const { t, locale } = useI18n()
 const { form, fieldErrors } = editor
+const MarkdownEditor = defineAsyncComponent(() => import('./MarkdownEditor.vue'))
+const promptErrorId = useId()
 const zoneId = useId()
 const zoneOptions = computed(() => timeZones().map((value) => ({ value, label: value })))
 function changeZone(value: string) {
@@ -24,14 +26,17 @@ function changeZone(value: string) {
     <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
       <section class="panel space-y-5 p-5">
         <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.name') }}</span><input v-model="form.name" class="field w-full" required maxlength="200"><FieldError :message="fieldErrors.name" /></label>
-        <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.prompt') }}</span><textarea
-          v-model="form.prompt"
-          class="field h-auto min-h-72 w-full py-3 leading-relaxed"
-          rows="14"
-          required
-          :placeholder="t('schedule.promptHint')"
-        /><FieldError :message="fieldErrors.prompt" />
-        </label>
+        <div>
+          <span class="mb-2 block caps text-muted">{{ t('schedule.prompt') }}</span>
+          <MarkdownEditor
+            v-model="form.prompt"
+            :label="t('schedule.prompt')"
+            :placeholder="t('schedule.promptHint')"
+            :error="fieldErrors.prompt"
+            :error-id="promptErrorId"
+          />
+          <FieldError :id="promptErrorId" :message="fieldErrors.prompt" />
+        </div>
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.owner') }}</span><input
             v-model="form.owner_email"
