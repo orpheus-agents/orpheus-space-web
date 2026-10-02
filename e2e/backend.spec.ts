@@ -15,7 +15,8 @@ test('real nginx and Space support browser CRUD with the core offline', async ({
   await expect(page.getByRole('heading', { name: 'New schedule' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: /^Owner email/ })).toHaveValue(saml ? 'operator@example.test' : '')
   await page.getByLabel('Name', { exact: true }).fill('Browser integration')
-  await page.getByLabel('Prompt', { exact: true }).fill('Test with core offline')
+  const prompt = '---\nsource: integration\n---\n## Instructions\n\nTest with **core offline**'
+  await page.getByLabel('Prompt', { exact: true }).fill(prompt)
   await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('paused')
   // The API names the invalid field; the message lands under it, not only in a toast.
   await page.getByRole('combobox', { name: 'Repeat', exact: true }).selectOption('custom')
@@ -33,12 +34,15 @@ test('real nginx and Space support browser CRUD with the core offline', async ({
   await expect(page.getByText(/^Times in /)).toBeVisible()
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Browser integration' })).toBeVisible()
+  await expect(page.locator('.frontmatter')).toContainText('source: integration')
+  await expect(page.locator('.prose-output strong')).toHaveText('core offline')
   const id = new URL(page.url()).pathname.split('/').pop()!
   const auth = await page.request.get('/api/v1/auth/session')
   expect((await auth.json()).write_access).toBe(true)
   expect((await page.request.patch(`/api/v1/schedules/${id}`, { data: { name: 'Forbidden' } })).status()).toBe(403)
   expect((await page.request.get('/api/v1/schedules', { headers: { Authorization: 'Bearer invalid' } })).status()).toBe(401)
   await page.getByRole('link', { name: 'Edit schedule' }).click()
+  await expect(page.getByLabel('Prompt', { exact: true })).toHaveValue(prompt)
   await expect(page.getByRole('textbox', { name: /^Owner email/ })).toHaveValue(saml ? 'operator@example.test' : '')
   await page.getByRole('textbox', { name: /^Owner email/ }).fill('other@example.com')
   await page.getByRole('combobox', { name: 'Session', exact: true }).selectOption('reuse')

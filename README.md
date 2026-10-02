@@ -28,7 +28,10 @@ History and occurrence cards use stored Space data: dispatch state, observed run
 status, error codes with explanations, timings and duration. The result button
 explicitly reads the core; result errors and `fetched_at` remain separate from the
 worker's stored status and `observed_at`. There is no automatic result polling.
-Markdown is sanitized and remote images render as links.
+Schedule prompts and run results render Markdown with highlighted code and a
+separate YAML front matter block, as in Orpheus Web session messages. Editing
+preserves the raw prompt text. Markdown is sanitized and remote images render
+as links.
 
 ## Development
 

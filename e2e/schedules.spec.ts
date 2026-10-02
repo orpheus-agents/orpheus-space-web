@@ -131,3 +131,61 @@ test('filters repeat owner emails, retain them across cursor pages and clear cur
   expect(new URL(page.url()).searchParams.has('owner_email')).toBe(false)
   expect(new URL(page.url()).searchParams.has('cursor')).toBe(false)
 })
+
+test('schedule prompts render Markdown and front matter while preserving the editable source', async ({ page }) => {
+  const prompt = [
+    '---', 'source: monitoring', 'channel: "dev-errors"', '---',
+    '## Monitoring rules', '', '**Only new incidents.** See [dashboard](https://example.test/dashboard).', '',
+    '- Read the logs', '- Compare recent events', '',
+    '1. Check the channel', '2. Publish the result', '',
+    '> Keep the report concise.', '',
+    '| Service | Status |', '| --- | --- |', '| API | Ready |', '',
+    '```bash', 'echo "ready"', '```', '',
+    '![remote preview](https://example.test/pixel.png)', '',
+    '<img src="https://example.test/unsafe.png" onerror="alert(1)">',
+  ].join('\n')
+  let task = schedule({ prompt })
+  const remoteRequests: string[] = []
+  page.on('request', (request) => { if (request.url().startsWith('https://example.test/')) remoteRequests.push(request.url()) })
+  await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
+  await page.route('**/api/v1/**', (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/auth/session')) return route.fulfill({ json: {
+      mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null,
+    } })
+    if (path.endsWith('/settings')) return route.fulfill({ json: { base_env_from: [], allowed_env_from: [], browser_auth: 'anonymous' } })
+    if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [], next_cursor: null } })
+    if (route.request().method() === 'PATCH') task = { ...task, ...route.request().postDataJSON() }
+    return route.fulfill({ json: task })
+  })
+  await page.goto(`/schedules/${taskID}`)
+  await expect(page.locator('.frontmatter .hljs-attr').first()).toHaveText('source:')
+  await expect(page.locator('.frontmatter')).toContainText('channel: "dev-errors"')
+  const body = page.locator('.prose-output')
+  await expect(body.getByRole('heading', { name: 'Monitoring rules' })).toBeVisible()
+  await expect(body.locator('strong')).toHaveText('Only new incidents.')
+  await expect(body.locator('ul li')).toHaveCount(2)
+  await expect(body.locator('ol li')).toHaveCount(2)
+  await expect(body.locator('blockquote')).toContainText('Keep the report concise.')
+  await expect(body.getByRole('cell', { name: 'Ready' })).toBeVisible()
+  await expect(body.locator('pre code .hljs-built_in')).toHaveText('echo')
+  await expect(body.getByRole('link', { name: 'dashboard' })).toHaveAttribute('href', 'https://example.test/dashboard')
+  await expect(body.getByRole('link', { name: 'remote preview' })).toBeVisible()
+  await expect(body.locator('img')).toHaveCount(0)
+  expect(remoteRequests).toEqual([])
+  for (const theme of ['Light', 'Dark']) {
+    await page.getByRole('button', { name: 'Theme', exact: true }).click()
+    await page.getByRole('option', { name: theme, exact: true }).click()
+    await page.screenshot({ path: `test-results/prompt-${theme.toLowerCase()}.png`, fullPage: true })
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(body.getByRole('heading', { name: 'Monitoring rules' })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await page.screenshot({ path: 'test-results/prompt-mobile.png', fullPage: true })
+  await page.getByRole('link', { name: 'Edit schedule' }).click()
+  await expect(page.getByLabel('Prompt', { exact: true })).toHaveValue(prompt)
+  await page.getByLabel('Prompt', { exact: true }).fill('Updated plain text')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.locator('.prose-output')).toHaveText('Updated plain text')
+  await expect(page.locator('.frontmatter')).toHaveCount(0)
+})
