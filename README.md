@@ -13,7 +13,7 @@ Shared agent schedules for [Orpheus Space](https://github.com/orpheus-agents/orp
 Vue 3, TypeScript, Vite, Tailwind CSS and Vue Router; English/Russian and light/dark themes.
 
 Create and edit schedules, pause/resume, filter by multiple owner emails or unowned
-schedules, choose allowed ENV names and reset reusable context. The list shows each
+schedules, choose profiles, sandbox templates and allowed ENV names and reset reusable context. The list shows each
 schedule's last run; validation problems from the API appear under their fields.
 All users with Space access can edit all schedules. Owner email is an editable
 filter. The header lists Skills as a coming section without a route or API; chat
@@ -49,8 +49,9 @@ npm run stack:start
 ```
 
 The disposable stack builds the pinned Space commit, migrates an isolated Postgres
-and serves the production nginx frontend. It runs without core, worker, AgentBox
-or model credentials. Fixtures contain public test keys only. `npm run stack:stop`
+and serves the production nginx frontend. Orpheus v0.5.0 provides real profile and
+template catalogs, using a separate disposable database. No workers, AgentBox
+or model credentials are needed. Fixtures contain public test keys only. `npm run stack:stop`
 stops the stack and discards its temporary database.
 
 For Vite with hot reload, start that stack and run:
@@ -98,13 +99,23 @@ After backend review/merge, pin its real commit before opening the frontend PR.
 The browser uses same-origin cookie credentials, never a built-in API key.
 Runtime `ORPHEUS_SPACE_UPSTREAM` selects the internal Space origin for nginx's
 `/api/`, `/auth/` and `/saml/` proxy. POST/PATCH/DELETE are forwarded and carry
-`X-Orpheus-CSRF: 1`; the browser supplies Origin. No requests proxy to core.
+`X-Orpheus-CSRF: 1`; the browser supplies Origin. The browser accesses Orpheus catalogs through Space, which uses its own service key.
 
 Configure auth modes on Space: `anonymous` for local development, `saml` for
 browser SSO or `api_only` to disable browser access. Space has its own Keycloak
 client, cookie and auth storage. 401 prompts sign-in; 503 preserves access state
 and permits retry. Local logout does not end the Keycloak/core session.
 The frontend contains only the Schedules section and needs no section feature flag.
+
+Profile and template fields offer keyboard-accessible search by name or description,
+mark creation defaults and show the selected description below the field. Defaults
+are applied once for new schedules; later catalog refreshes preserve the user's choice.
+Editing keeps stored names, including removed choices. Catalog failures do not block
+local edits or selecting from the last loaded catalog. Unchanged selections are
+omitted from PATCH, and switching profiles keeps an explicit model override.
+The model placeholder shows the selected profile's model without saving it as an
+override. Schedule cards show stored names with optional description tooltips;
+unavailable catalogs do not block the card or history.
 
 New schedules take the UI timezone at creation. Existing schedules keep their
 stored timezone; changing the header's timezone changes only date display.
@@ -122,7 +133,8 @@ so the user can remove them.
   unused dependencies, vulnerabilities and production build.
 - `make test-e2e`: browser fixtures, editing, history, automatic run results and themes.
 - `make test-integration`: real nginx + Space + Postgres, anonymous and SAML CRUD,
-  CSRF/logout, separate Keycloak client access, with core offline.
+  CSRF/logout, separate Keycloak client access, real Orpheus catalogs and editing
+  with Orpheus offline.
 - `make docker-build`: production image. Static assets build on BUILDPLATFORM;
   nginx runs as an unprivileged user and exposes `/healthz` on 8080.
 

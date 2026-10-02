@@ -25,7 +25,10 @@ const environment = {
 }
 let localContext
 const project = action === 'test' ? 'orpheus-space-web-integration' : 'orpheus-space-web-dev'
-const compose = ['compose', '-p', project, '-f', '.docker/dev/compose.yaml']
+const composeFile = resolve('.docker/dev/compose.yaml')
+environment.COMPOSE_PROJECT_NAME = project
+environment.COMPOSE_FILE = composeFile
+const compose = ['compose', '-p', project, '-f', composeFile]
 const saml = [...compose, '-f', '.docker/dev/compose.saml.yaml']
 async function run(command, args, extraEnv = {}) {
   await new Promise((resolve, reject) => {
@@ -199,7 +202,7 @@ try {
   if (action === 'stop') await run('docker', [...compose, 'down', '--remove-orphans'])
   else if (action === 'start') {
     await run('docker', [...compose, 'up', '-d', '--build', '--wait', '--wait-timeout', '180'])
-    console.log(`Orpheus Space: http://127.0.0.1:${httpPort} (disposable local database, no core or worker)`)
+    console.log(`Orpheus Space: http://127.0.0.1:${httpPort} (disposable databases, Orpheus catalogs, no workers)`)
   } else if (action === 'start-saml') {
     await setupSAML()
     await run('docker', [...saml, 'up', '-d', '--build', '--wait', '--wait-timeout', '180', 'db', 'migrate', 'space', 'ui', 'keycloak'])

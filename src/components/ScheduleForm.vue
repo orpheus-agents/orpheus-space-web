@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, useId } from 'vue'
-import { Clock3 } from 'lucide-vue-next'
+import { Box, Clock3, UserRound } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { SessionMode, Status } from '../api/generated'
 import { formatOffset, timeZones } from '../composables/useSettings'
 import { formatDate } from '../format'
 import type { useScheduleEditor } from '../composables/useScheduleEditor'
+import CatalogField from './CatalogField.vue'
 import CronBuilder from './CronBuilder.vue'
 import FieldError from './FieldError.vue'
 import HeaderMenu from './HeaderMenu.vue'
@@ -15,6 +16,7 @@ const { form, fieldErrors } = editor
 const MarkdownEditor = defineAsyncComponent(() => import('./MarkdownEditor.vue'))
 const promptErrorId = useId()
 const zoneId = useId()
+const profileModel = computed(() => editor.catalogs.profiles.data.value?.items.find((item) => item.name === form.profile)?.model)
 const zoneOptions = computed(() => timeZones().map((value) => ({ value, label: value })))
 function changeZone(value: string) {
   form.timezone = value
@@ -45,7 +47,7 @@ function changeZone(value: string) {
             class="field w-full"
             :placeholder="t('schedule.shared')"
           ><FieldError :message="fieldErrors.owner_email" /><span class="mt-2 block text-xs text-muted">{{ t('schedule.ownerHint') }}</span></label>
-          <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.modelOptional') }}</span><input v-model="form.model" class="field w-full" :placeholder="t('schedule.modelDefault')"><FieldError :message="fieldErrors.model" /></label>
+          <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.modelOptional') }}</span><input v-model="form.model" class="field w-full" :placeholder="profileModel ? t('schedule.modelFromProfile', { model: profileModel }) : t('schedule.modelDefault')"><FieldError :message="fieldErrors.model" /></label>
         </div>
       </section>
       <section class="panel space-y-5 p-5">
@@ -81,6 +83,10 @@ function changeZone(value: string) {
     </div>
     <section class="panel space-y-5 p-5">
       <h2 class="panel-title">{{ t('schedule.execution') }}</h2>
+      <div class="grid gap-5 sm:grid-cols-2">
+        <CatalogField v-model="form.profile" :label="t('schedule.profile')" :icon="UserRound" :items="editor.catalogs.profiles.data.value?.items ?? null" :unavailable="editor.catalogs.profiles.disconnected.value" :error="fieldErrors.profile" />
+        <CatalogField v-model="form.template" :label="t('schedule.template')" :icon="Box" :items="editor.catalogs.templates.data.value?.items ?? null" :unavailable="editor.catalogs.templates.disconnected.value" :error="fieldErrors.template" />
+      </div>
       <label class="block max-w-md"><span class="mb-2 block caps text-muted">{{ t('schedule.sessionMode') }}</span><select v-model="form.session_mode" class="field w-full">
         <option v-for="mode in Object.values(SessionMode)" :key="mode" :value="mode">{{ t(`sessionMode.${mode}`) }}</option>
       </select></label>

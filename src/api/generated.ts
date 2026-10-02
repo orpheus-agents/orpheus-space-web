@@ -39,6 +39,40 @@ export type paths = {
         patch: operations["UpdateSchedule"];
         trace?: never;
     };
+    "/api/v1/schedules/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Orpheus profiles and the creation default */
+        get: operations["GetProfiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedules/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Orpheus templates and the creation default */
+        get: operations["GetTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schedules/settings": {
         parameters: {
             query?: never;
@@ -265,7 +299,41 @@ export type components = {
         /** @enum {string} */
         SessionMode: SessionMode;
         EnvFrom: string[];
+        Profile: {
+            name: string;
+            description: string | null;
+            /** @enum {string} */
+            harness: ProfileHarness;
+            model: string | null;
+            codex: components["schemas"]["CodexProfile"];
+            instructions: string;
+            is_default: boolean;
+        };
+        CodexProfile: {
+            /** @enum {string} */
+            effort?: CodexProfileEffort;
+            /** @enum {string} */
+            summary?: CodexProfileSummary;
+            /** @enum {string} */
+            personality?: CodexProfilePersonality;
+            service_tier?: string;
+        };
+        Profiles: {
+            items: components["schemas"]["Profile"][];
+        };
+        Template: {
+            name: string;
+            description: string | null;
+            is_default: boolean;
+        };
+        Templates: {
+            items: components["schemas"]["Template"][];
+        };
         CreateSchedule: {
+            /** @description Exact Orpheus profile name; creation uses the configured default when omitted. */
+            profile?: string;
+            /** @description Exact Orpheus template name; creation uses the configured default when omitted. */
+            template?: string;
             name: string;
             prompt: string;
             cron: string;
@@ -277,6 +345,10 @@ export type components = {
             env_from?: components["schemas"]["EnvFrom"];
         };
         UpdateSchedule: {
+            /** @description Exact Orpheus profile name; omitted keeps the stored choice; a change starts a new reusable session. */
+            profile?: string;
+            /** @description Exact Orpheus template name; omitted keeps the stored choice; a change starts a new reusable session. */
+            template?: string;
             name?: string;
             prompt?: string;
             cron?: string;
@@ -288,6 +360,15 @@ export type components = {
             env_from?: components["schemas"]["EnvFrom"];
         };
         Schedule: {
+            /** @description Stored Orpheus profile name. */
+            profile: string;
+            /** @description Stored Orpheus template name. */
+            template: string;
+            /**
+             * Format: uri
+             * @description Absolute Space Web card URL from ORPHEUS_PUBLIC_URL, or null when not configured. Computed at response time.
+             */
+            url: string | null;
             name: string;
             prompt: string;
             cron: string;
@@ -456,6 +537,11 @@ export type components = {
 };
 export type Problem = components['schemas']['Problem'];
 export type EnvFrom = components['schemas']['EnvFrom'];
+export type Profile = components['schemas']['Profile'];
+export type CodexProfile = components['schemas']['CodexProfile'];
+export type Profiles = components['schemas']['Profiles'];
+export type Template = components['schemas']['Template'];
+export type Templates = components['schemas']['Templates'];
 export type CreateSchedule = components['schemas']['CreateSchedule'];
 export type UpdateSchedule = components['schemas']['UpdateSchedule'];
 export type Schedule = components['schemas']['Schedule'];
@@ -603,6 +689,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Schedule"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    GetProfiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profiles"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    GetTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Templates"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -897,6 +1025,30 @@ export enum Status {
 export enum SessionMode {
     new = "new",
     reuse = "reuse"
+}
+export enum ProfileHarness {
+    codex = "codex"
+}
+export enum CodexProfileEffort {
+    none = "none",
+    minimal = "minimal",
+    low = "low",
+    medium = "medium",
+    high = "high",
+    xhigh = "xhigh",
+    max = "max",
+    ultra = "ultra"
+}
+export enum CodexProfileSummary {
+    auto = "auto",
+    concise = "concise",
+    detailed = "detailed",
+    none = "none"
+}
+export enum CodexProfilePersonality {
+    none = "none",
+    friendly = "friendly",
+    pragmatic = "pragmatic"
 }
 export enum SettingsBrowser_auth {
     api_only = "api_only",

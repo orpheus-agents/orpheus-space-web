@@ -5,8 +5,8 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { provideToasts } from './useToasts'
 import { useScheduleEditor } from './useScheduleEditor'
 import { useSettings } from './useSettings'
-import { schedule } from '../test/fixtures'
-import { AuthSessionMode, SettingsBrowser_auth, type AuthSession, type Settings } from '../api/generated'
+import { profiles, templates, schedule } from '../test/fixtures'
+import { AuthSessionMode, SettingsBrowser_auth, type Profiles, type Templates, type AuthSession, type Settings } from '../api/generated'
 import { provideAuthSession } from './useAuth'
 import ScheduleForm from '../components/ScheduleForm.vue'
 let wrapper: ReturnType<typeof mount>
@@ -14,18 +14,22 @@ afterEach(() => {
   wrapper?.unmount()
   vi.unstubAllGlobals()
 })
-async function setup(edit = false, email: string | null = null, settings: Partial<Settings> = {}, renderForm = false) {
+async function setup(edit = false, email: string | null = null, settings: Partial<Settings> = {}, renderForm = false, catalogs: { profiles: Profiles | null; templates: Templates | null } = { profiles: profiles(), templates: templates() }) {
   const session = shallowRef<AuthSession>({
     mode: AuthSessionMode.saml, authenticated: true, read_access: true, write_access: true,
     user: { subject: 'operator', display_name: 'Operator', email }, expires_at: null,
   })
-  const fetcher = vi.fn((url: string) =>
-    Promise.resolve(
+  const fetcher = vi.fn((url: string) => {
+    if (url.endsWith('/profiles') || url.endsWith('/templates')) {
+      const items = url.endsWith('/profiles') ? catalogs.profiles : catalogs.templates
+      return Promise.resolve(Response.json(items ?? { error: { code: 'core_unavailable' } }, { status: items ? 200 : 503 }))
+    }
+    return Promise.resolve(
       Response.json(
-        url.endsWith('/settings') ? { base_env_from: ['A'], allowed_env_from: ['A', 'B'], browser_auth: SettingsBrowser_auth.anonymous, ...settings } : schedule(),
+        url.endsWith('/profiles') ? profiles() : url.endsWith('/templates') ? templates() : url.endsWith('/settings') ? { base_env_from: ['A'], allowed_env_from: ['A', 'B'], browser_auth: SettingsBrowser_auth.anonymous, ...settings } : schedule(),
       ),
-    ),
-  )
+    )
+  })
   vi.stubGlobal('fetch', fetcher)
   const router = createRouter({
     history: createMemoryHistory(),
@@ -70,7 +74,7 @@ it('prefills the owner once for new schedules, leaving edits and cleared values 
   const edit = await setup(true, 'operator@example.com')
   expect(edit.state.form.owner_email).toBe('alice@example.com')
   edit.fetcher.mockImplementation((url: string) => Promise.resolve(Response.json(
-    url.endsWith('/settings') ? { base_env_from: [], allowed_env_from: [], browser_auth: SettingsBrowser_auth.saml } : schedule({ owner_email: null }),
+    url.endsWith('/profiles') ? profiles() : url.endsWith('/templates') ? templates() : url.endsWith('/settings') ? { base_env_from: [], allowed_env_from: [], browser_auth: SettingsBrowser_auth.saml } : schedule({ owner_email: null }),
   )))
   await edit.state.load()
   expect(edit.state.form.owner_email).toBe('')
@@ -213,4 +217,79 @@ it('rejects an empty prompt before sending and clears the field error when edite
   state.form.prompt = '# Work'
   await flushPromises()
   expect(state.fieldErrors.prompt).toBeUndefined()
+})
+
+it('prefills catalog defaults once and preserves choices and model overrides on refresh', async () => {
+  const { state, fetcher } = await setup()
+  expect(state.form.profile).toBe('default')
+  expect(state.form.template).toBe('fixture')
+  expect(state.form.model).toBe('')
+  state.form.profile = 'research'
+  state.form.model = 'explicit-model'
+  await state.catalogs.refresh()
+  expect(state.form.profile).toBe('research')
+  expect(state.form.model).toBe('explicit-model')
+  fetcher.mockImplementation(() => Promise.resolve(Response.json({ error: { code: 'core_unavailable' } }, { status: 503 })))
+  await state.catalogs.refresh()
+  expect(state.catalogs.disconnected.value).toBe(true)
+  expect(state.form.profile).toBe('research')
+  expect(state.form.template).toBe('fixture')
+})
+
+it('requires an explicit choice when a catalog has no default, without inventing a fallback', async () => {
+  const choices = profiles()
+  choices.items.forEach((item) => item.is_default = false)
+  const { state, fetcher } = await setup(false, null, {}, false, { profiles: choices, templates: templates() })
+  expect(state.form.profile).toBe('')
+  expect(state.form.template).toBe('fixture')
+  state.form.prompt = 'Work'
+  fetcher.mockClear()
+  await state.save()
+  expect(fetcher).not.toHaveBeenCalled()
+  expect(state.fieldErrors.profile).toBe('Choose an available profile.')
+})
+
+it('recovers initially unavailable catalogs independently without overwriting edits', async () => {
+  const { state, fetcher } = await setup(false, null, {}, false, { profiles: null, templates: templates() })
+  expect(state.loading.value).toBe(false)
+  expect(state.error.value).toBeNull()
+  expect(state.form.profile).toBe('')
+  expect(state.form.template).toBe('fixture')
+  state.form.template = 'reports:v2'
+  fetcher.mockImplementation((url: string) => Promise.resolve(Response.json(url.endsWith('/profiles') ? profiles() : templates())))
+  await state.catalogs.refresh()
+  expect(state.form.profile).toBe('default')
+  expect(state.form.template).toBe('reports:v2')
+})
+
+it('edits stored selections offline and sends only changed selections', async () => {
+  const { state, fetcher } = await setup(true, null, {}, false, { profiles: null, templates: null })
+  expect(state.form.profile).toBe('default')
+  expect(state.form.template).toBe('fixture')
+  const bodies: Record<string, unknown>[] = []
+  fetcher.mockImplementation((_url: string, request?: RequestInit) => {
+    bodies.push(JSON.parse(request!.body as string))
+    return Promise.resolve(Response.json(schedule()))
+  })
+  state.form.prompt = 'Updated'
+  await state.save()
+  expect(bodies[0]).not.toHaveProperty('profile')
+  expect(bodies[0]).not.toHaveProperty('template')
+  state.form.profile = 'research'
+  state.form.model = 'explicit-model'
+  await state.save()
+  expect(bodies[1]).toMatchObject({ profile: 'research', model: 'explicit-model' })
+  expect(bodies[1]).not.toHaveProperty('template')
+})
+
+it('shows profile/template validation at the corresponding field', async () => {
+  const { state, fetcher } = await setup()
+  state.form.prompt = 'Work'
+  fetcher.mockImplementation(() => Promise.resolve(Response.json({ error: {
+    code: 'validation_error', message: '', phase: null,
+    details: ['profile', 'template'].map((field) => ({ path: ['body', field], code: 'invalid_value' })),
+  } }, { status: 422 })))
+  await state.save()
+  expect(state.fieldErrors.profile).toBe('Choose an available profile.')
+  expect(state.fieldErrors.template).toBe('Choose an available sandbox template.')
 })

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { schedule, occurrence, taskID, occurrenceID, timestamp } from '../src/test/fixtures'
+import { profiles, templates, schedule, occurrence, taskID, occurrenceID, timestamp } from '../src/test/fixtures'
 
 test('new schedule uses the signed-in email and hides empty extra ENV choices', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
@@ -9,6 +9,8 @@ test('new schedule uses the signed-in email and hides empty extra ENV choices', 
       mode: 'saml', authenticated: true, read_access: true, write_access: true,
       user: { subject: 'operator', display_name: 'Operator', email: 'operator@example.com' }, expires_at: timestamp,
     } })
+    if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+    if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
     if (path.endsWith('/settings')) return route.fulfill({ json: {
       base_env_from: ['A'], allowed_env_from: ['A'], browser_auth: 'saml',
     } })
@@ -40,6 +42,8 @@ test('list, editing, history and automatic result work in both themes', async ({
       return route.fulfill({
         json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null },
       })
+    if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+    if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
     if (path.endsWith('/settings'))
       return route.fulfill({ json: { base_env_from: ['A'], allowed_env_from: ['A', 'B'], browser_auth: 'anonymous' } })
     if (path.endsWith('/preview'))
@@ -163,6 +167,8 @@ test('schedule prompts render Markdown and front matter while preserving the edi
     if (path.endsWith('/auth/session')) return route.fulfill({ json: {
       mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null,
     } })
+    if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+    if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
     if (path.endsWith('/settings')) return route.fulfill({ json: { base_env_from: [], allowed_env_from: [], browser_auth: 'anonymous' } })
     if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [], next_cursor: null } })
     if (route.request().method() === 'PATCH') task = { ...task, ...route.request().postDataJSON() }
@@ -248,6 +254,8 @@ test('readable schedules, aligned list data and clickable history rows', async (
     if (path.endsWith('/auth/session')) return route.fulfill({ json: {
       mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null,
     } })
+    if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+    if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
     if (path.endsWith('/settings')) return route.fulfill({ json: { base_env_from: [], allowed_env_from: [], browser_auth: 'anonymous' } })
     if (path.endsWith('/result')) return route.fulfill({ json: {
       run_status: 'completed', fetched_at: timestamp,
@@ -293,4 +301,85 @@ test('readable schedules, aligned list data and clickable history rows', async (
   await expect(page.getByRole('textbox', { name: 'Задание агенту', exact: true })).toContainText('Мониторинг ошибок')
   await page.getByRole('button', { name: 'Сохранить', exact: true }).scrollIntoViewIfNeeded()
   await page.screenshot({ path: 'test-results/schedule-editor-ru.png', fullPage: true, animations: 'disabled' })
+})
+
+test('catalog choices support descriptions, keyboard search and preserved offline editing', async ({ page }) => {
+  let task = schedule(), offline = false, removed = false
+  const patches: Record<string, unknown>[] = []
+  await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
+  await page.route('**/api/v1/**', (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/auth/session')) return route.fulfill({ json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null } })
+    if (path.endsWith('/profiles') || path.endsWith('/templates')) {
+      if (offline) return route.fulfill({ status: 503, json: { error: { code: 'core_unavailable' } } })
+      const data = path.endsWith('/profiles') ? profiles() : templates()
+      if (removed) data.items = data.items.filter((item) => item.is_default)
+      return route.fulfill({ json: data })
+    }
+    if (path.endsWith('/settings')) return route.fulfill({ json: { base_env_from: [], allowed_env_from: [], browser_auth: 'anonymous' } })
+    if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [], next_cursor: null } })
+    if (route.request().method() === 'POST' || route.request().method() === 'PATCH') {
+      const body = route.request().postDataJSON()
+      patches.push(body)
+      task = { ...task, ...body }
+      return route.fulfill({ json: task })
+    }
+    return route.fulfill({ json: task })
+  })
+  await page.clock.install()
+  await page.goto('/schedules/new')
+  await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('default')
+  await page.getByLabel('Name', { exact: true }).fill('Selected execution')
+  await page.getByRole('textbox', { name: 'Prompt', exact: true }).fill('Do the work')
+  await expect(page.getByLabel('Model (optional)', { exact: true })).toHaveAttribute('placeholder', 'From the profile: default-model')
+  await expect(page.getByLabel('Model (optional)', { exact: true })).toHaveValue('')
+  await page.getByLabel('Model (optional)', { exact: true }).fill('explicit-model')
+  await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  await expect(page.getByRole('option', { name: /default/ })).toContainText('Default')
+  offline = true
+  await page.clock.fastForward(30_000)
+  await expect(page.getByText('Reconnecting…')).toBeVisible()
+  await expect(page.getByRole('listbox', { name: 'Profile', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Profile', exact: true })).toBeEnabled()
+  await page.getByRole('searchbox', { name: 'Search', exact: true }).fill('sources')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('research')
+  await expect(page.getByText('Search and compare sources', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Model (optional)', { exact: true })).toHaveValue('explicit-model')
+  await expect(page.getByLabel('Model (optional)', { exact: true })).toHaveAttribute('placeholder', 'From the profile: research-model')
+  offline = false
+  await page.getByRole('button', { name: 'Sandbox template', exact: true }).click()
+  await page.screenshot({ path: 'test-results/catalog-form-light.png', fullPage: true })
+  await page.getByRole('option', { name: /reports:v2/ }).click()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Selected execution' })).toBeVisible()
+  expect(patches[0]).toMatchObject({ profile: 'research', template: 'reports:v2', model: 'explicit-model' })
+  await page.getByRole('button', { name: 'research', exact: true }).focus()
+  await expect(page.getByRole('tooltip')).toHaveText('Search and compare sources')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('tooltip')).toHaveCount(0)
+  removed = true
+  await page.getByRole('link', { name: 'Edit schedule' }).click()
+  await expect(page.getByText('This option is no longer available.', { exact: false })).toHaveCount(2)
+  await page.getByRole('button', { name: 'Theme', exact: true }).click()
+  await page.getByRole('option', { name: 'Dark', exact: true }).click()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  await expect(page.getByRole('option', { name: /research/ })).toBeDisabled()
+  await page.screenshot({ path: 'test-results/catalog-form-mobile-dark.png', fullPage: true })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.keyboard.press('Escape')
+  offline = true
+  await page.reload()
+  await expect(page.getByText('Reconnecting…')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('research')
+  await expect(page.getByRole('button', { name: 'Profile', exact: true })).toBeDisabled()
+  await page.getByLabel('Name', { exact: true }).fill('Edited offline')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Edited offline' })).toBeVisible()
+  expect(patches.at(-1)).not.toHaveProperty('profile')
+  expect(patches.at(-1)).not.toHaveProperty('template')
+  await expect(page.getByText('research', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'research', exact: true })).toHaveCount(0)
 })

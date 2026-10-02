@@ -56,6 +56,8 @@ export const ERROR_CODES = [
   'previous_run_active',
   'schedule_inactive',
   'validation_error',
+  'unknown_profile',
+  'unknown_template',
   'capacity_exhausted',
   'session_busy',
   'idempotency_conflict',
