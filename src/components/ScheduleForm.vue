@@ -16,6 +16,7 @@ const { form, fieldErrors } = editor
 const MarkdownEditor = defineAsyncComponent(() => import('./MarkdownEditor.vue'))
 const promptErrorId = useId()
 const zoneId = useId()
+const modelHintId = useId()
 const profileModel = computed(() => editor.catalogs.profiles.data.value?.items.find((item) => item.name === form.profile)?.model)
 const zoneOptions = computed(() => timeZones().map((value) => ({ value, label: value })))
 function changeZone(value: string) {
@@ -39,16 +40,13 @@ function changeZone(value: string) {
           />
           <FieldError :id="promptErrorId" :message="fieldErrors.prompt" />
         </div>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.owner') }}</span><input
-            v-model="form.owner_email"
-            :aria-label="t('schedule.owner')"
-            type="email"
-            class="field w-full"
-            :placeholder="t('schedule.shared')"
-          ><FieldError :message="fieldErrors.owner_email" /><span class="mt-2 block text-xs text-muted">{{ t('schedule.ownerHint') }}</span></label>
-          <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.modelOptional') }}</span><input v-model="form.model" class="field w-full" :placeholder="profileModel ? t('schedule.modelFromProfile', { model: profileModel }) : t('schedule.modelDefault')"><FieldError :message="fieldErrors.model" /></label>
-        </div>
+        <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.owner') }}</span><input
+          v-model="form.owner_email"
+          :aria-label="t('schedule.owner')"
+          type="email"
+          class="field w-full"
+          :placeholder="t('schedule.shared')"
+        ><FieldError :message="fieldErrors.owner_email" /><span class="mt-2 block text-xs text-muted">{{ t('schedule.ownerHint') }}</span></label>
       </section>
       <section class="panel space-y-5 p-5">
         <h2 class="panel-title">{{ t('schedule.timing') }}</h2>
@@ -84,7 +82,13 @@ function changeZone(value: string) {
     <section class="panel space-y-5 p-5">
       <h2 class="panel-title">{{ t('schedule.execution') }}</h2>
       <div class="grid gap-5 sm:grid-cols-2">
-        <CatalogField v-model="form.profile" :label="t('schedule.profile')" :icon="UserRound" :items="editor.catalogs.profiles.data.value?.items ?? null" :unavailable="editor.catalogs.profiles.disconnected.value" :error="fieldErrors.profile" />
+        <div class="min-w-0 space-y-5">
+          <CatalogField v-model="form.profile" :label="t('schedule.profile')" :icon="UserRound" :items="editor.catalogs.profiles.data.value?.items ?? null" :unavailable="editor.catalogs.profiles.disconnected.value" :error="fieldErrors.profile" />
+          <div>
+            <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.modelOptional') }}</span><input v-model="form.model" :aria-describedby="modelHintId" class="field w-full" :placeholder="profileModel ? t('schedule.modelFromProfile', { model: profileModel }) : t('schedule.modelDefault')"><FieldError :message="fieldErrors.model" /></label>
+            <p :id="modelHintId" class="mt-2 text-xs text-muted">{{ t('schedule.modelHint') }}</p>
+          </div>
+        </div>
         <CatalogField v-model="form.template" :label="t('schedule.template')" :icon="Box" :items="editor.catalogs.templates.data.value?.items ?? null" :unavailable="editor.catalogs.templates.disconnected.value" :error="fieldErrors.template" />
       </div>
       <label class="block max-w-md"><span class="mb-2 block caps text-muted">{{ t('schedule.sessionMode') }}</span><select v-model="form.session_mode" class="field w-full">

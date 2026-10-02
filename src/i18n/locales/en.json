@@ -95,6 +95,7 @@
     "modelOptional": "Model (optional)",
     "modelDefault": "From the agent profile",
     "modelFromProfile": "From the profile: {model}",
+    "modelHint": "Overrides the profile’s model, for example, with a smaller one.",
     "preview": "Preview next runs",
     "previewZone": "Times in {zone}",
     "execution": "Execution",
