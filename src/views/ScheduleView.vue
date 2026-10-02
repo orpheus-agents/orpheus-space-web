@@ -8,6 +8,7 @@ import PageState from '../components/PageState.vue'
 import RefreshStatus from '../components/RefreshStatus.vue'
 import HistoryPanel from '../components/HistoryPanel.vue'
 import StatusBadge from '../components/StatusBadge.vue'
+import RichText from '../components/RichText.vue'
 const { t, locale } = useI18n()
 const { timeZone } = useSettings()
 const { data, error, pending, updatedAt, disconnected, refresh, toggle, busy, confirm, execute } = useSchedule()
@@ -66,7 +67,7 @@ const { data, error, pending, updatedAt, disconnected, refresh, toggle, busy, co
         </div>
       </dl>
       <h2 class="caps mb-3 text-muted">{{ t('schedule.prompt') }}</h2>
-      <p class="whitespace-pre-wrap break-words leading-relaxed">{{ data.prompt }}</p>
+      <RichText :text="data.prompt" />
     </section>
     <HistoryPanel :id="data.id" />
   </template>
