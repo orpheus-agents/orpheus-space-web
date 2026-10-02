@@ -6,6 +6,7 @@ import { SessionMode, Status, type CreateSchedule, type Settings } from '../api/
 import { useSettings } from './useSettings'
 import { useAction } from './useAction'
 import { useToasts } from './useToasts'
+import { useAuthSession } from './useAuth'
 
 const FIELDS = ['name', 'prompt', 'cron', 'timezone', 'status', 'model', 'owner_email', 'session_mode', 'env_from'] as const
 export type Field = (typeof FIELDS)[number]
@@ -17,6 +18,7 @@ export function useScheduleEditor() {
   const { push } = useToasts()
   const id = typeof route.params.id === 'string' ? route.params.id : undefined
   const { timeZone } = useSettings()
+  const session = useAuthSession()
   const form = reactive({
     name: '',
     prompt: '',
@@ -24,7 +26,7 @@ export function useScheduleEditor() {
     timezone: timeZone.value,
     status: Status.active,
     model: '',
-    owner_email: '',
+    owner_email: id ? '' : (session.value?.user?.email ?? ''),
     session_mode: SessionMode.new,
     env_from: [] as string[],
   })

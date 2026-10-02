@@ -103,6 +103,12 @@ The frontend contains only the Schedules section and needs no section feature fl
 New schedules take the UI timezone at creation. Existing schedules keep their
 stored timezone; changing the header's timezone changes only date display.
 Preview always labels and uses the task timezone.
+The owner email of a new schedule is prefilled from the signed-in user's SAML
+email, when available. It remains editable and may be cleared for a shared
+schedule. Editing an existing schedule preserves its owner.
+Additional ENV choices are hidden when the allowlist has no names beyond the
+base list. Previously selected names that are no longer allowed remain visible
+so the user can remove them.
 
 ## Checks and releases
 

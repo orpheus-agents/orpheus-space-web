@@ -88,14 +88,14 @@ function changeZone(value: string) {
         <p class="mb-3 text-sm text-danger-ink">{{ t('schedule.obsoleteEnv') }}</p>
         <label v-for="name in editor.obsoleteNames.value" :key="name" class="mr-5 inline-flex items-center gap-2 font-mono text-sm"><input v-model="form.env_from" type="checkbox" :value="name">{{ name }}</label>
       </div>
-      <fieldset>
+      <fieldset v-if="editor.extraNames.value.length">
         <legend class="caps mb-3 text-muted">{{ t('schedule.extraEnv') }}</legend>
         <p class="mb-3 text-sm text-muted">{{ t('schedule.envHint') }}</p>
         <div class="flex flex-wrap gap-x-6 gap-y-3">
-          <label v-for="name in editor.extraNames.value" :key="name" class="flex items-center gap-2 font-mono text-sm"><input v-model="form.env_from" type="checkbox" :value="name">{{ name }}</label><span v-if="!editor.extraNames.value.length" class="text-sm text-muted">{{ t('common.none') }}</span>
+          <label v-for="name in editor.extraNames.value" :key="name" class="flex items-center gap-2 font-mono text-sm"><input v-model="form.env_from" type="checkbox" :value="name">{{ name }}</label>
         </div>
-        <FieldError :message="fieldErrors.env_from" />
       </fieldset>
+      <FieldError :message="fieldErrors.env_from" />
     </section>
     <div class="flex justify-end gap-3">
       <RouterLink class="button" :to="editor.id ? `/schedules/${editor.id}` : '/schedules'">{{ t('common.cancel') }}</RouterLink><button class="button-primary" type="submit" :disabled="editor.busy.value">{{ t('common.save') }}</button>

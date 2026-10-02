@@ -1,21 +1,28 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { defineComponent } from 'vue'
+import { defineComponent, h, shallowRef } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { provideToasts } from './useToasts'
 import { useScheduleEditor } from './useScheduleEditor'
 import { useSettings } from './useSettings'
 import { schedule } from '../test/fixtures'
+import { AuthSessionMode, SettingsBrowser_auth, type AuthSession, type Settings } from '../api/generated'
+import { provideAuthSession } from './useAuth'
+import ScheduleForm from '../components/ScheduleForm.vue'
 let wrapper: ReturnType<typeof mount>
 afterEach(() => {
   wrapper?.unmount()
   vi.unstubAllGlobals()
 })
-async function setup(edit = false) {
+async function setup(edit = false, email: string | null = null, settings: Partial<Settings> = {}, renderForm = false) {
+  const session = shallowRef<AuthSession>({
+    mode: AuthSessionMode.saml, authenticated: true, read_access: true, write_access: true,
+    user: { subject: 'operator', display_name: 'Operator', email }, expires_at: null,
+  })
   const fetcher = vi.fn((url: string) =>
     Promise.resolve(
       Response.json(
-        url.endsWith('/settings') ? { base_env_from: ['A'], allowed_env_from: ['A', 'B'], browser_auth: 'anonymous' } : schedule(),
+        url.endsWith('/settings') ? { base_env_from: ['A'], allowed_env_from: ['A', 'B'], browser_auth: SettingsBrowser_auth.anonymous, ...settings } : schedule(),
       ),
     ),
   )
@@ -35,7 +42,7 @@ async function setup(edit = false) {
   const Child = defineComponent({
     setup() {
       state = useScheduleEditor()
-      return () => null
+      return () => renderForm ? h(ScheduleForm, { editor: state }) : null
     },
   })
   wrapper = mount(
@@ -43,14 +50,56 @@ async function setup(edit = false) {
       components: { Child },
       setup() {
         notifications = provideToasts()
+        provideAuthSession(session)
       },
       template: '<Child />',
     }),
     { global: { plugins: [router] } },
   )
   await flushPromises()
-  return { state, fetcher, notifications }
+  return { state, fetcher, notifications, session }
 }
+it('prefills the owner once for new schedules, leaving edits and cleared values alone', async () => {
+  const first = await setup(false, 'operator@example.com')
+  expect(first.state.form.owner_email).toBe('operator@example.com')
+  first.state.form.owner_email = ''
+  first.session.value = { ...first.session.value, user: { subject: 'operator', display_name: 'Operator', email: 'changed@example.com' } }
+  await first.state.load()
+  expect(first.state.form.owner_email).toBe('')
+  wrapper.unmount()
+  const edit = await setup(true, 'operator@example.com')
+  expect(edit.state.form.owner_email).toBe('alice@example.com')
+  edit.fetcher.mockImplementation((url: string) => Promise.resolve(Response.json(
+    url.endsWith('/settings') ? { base_env_from: [], allowed_env_from: [], browser_auth: SettingsBrowser_auth.saml } : schedule({ owner_email: null }),
+  )))
+  await edit.state.load()
+  expect(edit.state.form.owner_email).toBe('')
+  wrapper.unmount()
+  const missing = await setup()
+  expect(missing.state.form.owner_email).toBe('')
+})
+it.each([
+  { base_env_from: [], allowed_env_from: [] },
+  { base_env_from: ['A'], allowed_env_from: ['A'] },
+])('hides extra ENV when there are no additional options: %j', async (settings) => {
+  const { state } = await setup(false, null, settings, true)
+  expect(wrapper.findAll('legend').some((node) => node.text() === 'Additional ENV names')).toBe(false)
+  expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(0)
+  state.form.env_from = ['RETIRED']
+  await flushPromises()
+  state.fieldErrors.env_from = 'Choose allowed variables.'
+  await flushPromises()
+  expect(wrapper.find('input[type="checkbox"][value="RETIRED"]').exists()).toBe(true)
+  expect(wrapper.get('[role="alert"]').text()).toBe('Choose allowed variables.')
+  await wrapper.get('input[type="checkbox"][value="RETIRED"]').setValue(false)
+  expect(state.form.env_from).toEqual([])
+})
+it('offers only non-base ENV names as additional choices', async () => {
+  const { state } = await setup(false, null, {}, true)
+  expect(wrapper.findAll('input[type="checkbox"]').map((node) => node.attributes('value'))).toEqual(['B'])
+  await wrapper.get('input[type="checkbox"][value="B"]').setValue(true)
+  expect(state.form.env_from).toEqual(['B'])
+})
 it('uses UI timezone once for creation and preserves the stored timezone when editing', async () => {
   useSettings().setTimeZone('Asia/Tokyo')
   const first = await setup()

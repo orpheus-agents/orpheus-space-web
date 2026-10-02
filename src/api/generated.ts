@@ -335,6 +335,8 @@ export type components = {
             user: {
                 subject: string;
                 display_name: string;
+                /** @description Normalized email from the SAML identity, or null when unavailable. */
+                email: string | null;
             } | null;
             /** Format: date-time */
             expires_at: string | null;
