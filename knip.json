@@ -1,0 +1,15 @@
+{
+  "project": [
+    "src/**/*.{ts,vue,css}",
+    "e2e/**/*.ts",
+    "*.ts",
+    "*.js",
+    "scripts/*.mjs"
+  ],
+  "ignore": [
+    "src/api/generated.ts"
+  ],
+  "ignoreDependencies": [
+    "@intlify/devtools-types"
+  ]
+}

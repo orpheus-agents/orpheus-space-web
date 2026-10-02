@@ -1,0 +1,43 @@
+server {
+    listen 8080;
+    server_name _;
+    server_tokens off;
+    root /usr/share/nginx/html;
+    index index.html;
+    include /etc/nginx/extra/*.conf;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+
+    location = /healthz { access_log off; return 204; }
+
+    location ~ ^/(api|auth|saml)(/|$) {
+        proxy_pass ${ORPHEUS_SPACE_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 60s;
+        client_max_body_size 1m;
+    }
+
+    location ^~ /assets/ {
+        try_files $uri =404;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy no-referrer always;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location = /index.html {
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy no-referrer always;
+        add_header Cache-Control "no-store";
+    }
+    location ~ \.[^/]+$ {
+        try_files $uri =404;
+    }
+    location / {
+        try_files $uri /index.html;
+    }
+}

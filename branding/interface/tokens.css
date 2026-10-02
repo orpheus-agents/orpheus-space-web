@@ -1,0 +1,98 @@
+/* Orpheus interface tokens. See ../interface.md and ../colors.md.
+   Fonts are in ../fonts/; adjust the paths when copying the file into a project.
+   Light by default; dark with [data-theme="dark"], or by system preference when
+   no data-theme is set. */
+
+@font-face {
+  font-family: 'Martian Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/MartianGroteskSemiExpanded-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Martian Grotesk';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('../fonts/MartianGroteskSemiExpanded-ExtraBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Martian Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/MartianMonoCondensed-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Martian Mono';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('../fonts/MartianMonoCondensed-SemiBold.woff2') format('woff2');
+}
+
+:root {
+  --bg: #F7F6F3;
+  --bg-raised: #FFFFFF;
+  --bg-subtle: #F1EEE9;
+  --ink: #0E0E10;
+  --muted: #69635B;
+  --line: #E0DBD3;
+  --accent: #00AD71;       /* fills: markers, underlines, matrices */
+  --accent-ink: #007E4F;   /* text on --bg */
+  --danger: #E75B61;       /* markers, borders, meters */
+  --danger-ink: #B4373D;   /* text on --bg */
+
+  --term-bg: #0B0B0D;      /* the console is dark in both themes */
+  --term-fg: #D8D8D4;
+  --term-dim: #8B8B86;
+  --term-line: #26262B;
+  --term-ok: #4EF2AA;
+  --term-err: #E75B61;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Martian Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: 'Martian Grotesk', var(--font-sans);
+
+  --r-btn: 0;
+  --r-panel: 0;
+  --r-win: 10px;           /* console windows only */
+
+  --header-h: 56px;
+  --row-h: 44px;
+  --gutter: 32px;
+  --content-max: 1280px;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0E0E10;
+  --bg-raised: #17171A;
+  --bg-subtle: #1C1C1F;
+  --ink: #EDEDEB;
+  --muted: #A49D94;
+  --line: #2C2C30;
+  --accent: #4EF2AA;
+  --accent-ink: #4EF2AA;
+  --danger-ink: #E75B61;
+  --term-line: #2C2C30;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0E0E10;
+    --bg-raised: #17171A;
+    --bg-subtle: #1C1C1F;
+    --ink: #EDEDEB;
+    --muted: #A49D94;
+    --line: #2C2C30;
+    --accent: #4EF2AA;
+    --accent-ink: #4EF2AA;
+    --danger-ink: #E75B61;
+    --term-line: #2C2C30;
+    color-scheme: dark;
+  }
+}
