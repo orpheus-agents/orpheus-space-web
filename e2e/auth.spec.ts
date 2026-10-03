@@ -3,7 +3,7 @@ test('API-only installation explains browser access; storage outage never redire
   await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
   await page.route('**/api/v1/auth/session', (route) =>
     route.fulfill({
-      json: { mode: 'api_only', authenticated: false, read_access: false, write_access: false, user: null, expires_at: null },
+      json: { mode: 'api_only', authenticated: false, read_access: false, write_access: false, can_manage_all: false, user: null, expires_at: null },
     }),
   )
   await page.goto('/schedules')

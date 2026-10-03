@@ -19,14 +19,15 @@ function openSchedule(event: MouseEvent, id: string) {
   void router.push(`/schedules/${id}`)
 }
 const { timeZone } = useSettings()
-const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned, status, cursor, apply, page, toggle, busy } =
+const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned, status, cursor, apply, page, toggle, canCreate, busy } =
   useSchedules()
 </script>
 <template>
   <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
     <h1 class="section-title">{{ t('nav.schedules') }}</h1>
-    <RouterLink class="button-primary" to="/schedules/new">{{ t('schedule.create') }}</RouterLink>
+    <RouterLink v-if="canCreate" class="button-primary" to="/schedules/new">{{ t('schedule.create') }}</RouterLink>
   </div>
+  <p v-if="!canCreate" class="mb-5 text-sm text-muted">{{ t('schedule.emailRequired') }}</p>
   <form class="panel mb-5 flex flex-wrap items-end gap-4 p-5" @submit.prevent="apply">
     <label class="flex min-w-60 flex-1 flex-col gap-2"><span class="caps text-muted">{{ t('schedule.ownerFilter') }}</span><input v-model="owners" class="field" :disabled="unowned" :placeholder="t('schedule.emailExample')"></label>
     <label class="flex flex-col gap-2"><span class="caps text-muted">{{ t('schedule.status') }}</span><select v-model="status" class="field">
@@ -41,7 +42,7 @@ const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned,
   </div>
   <PageState v-if="!data" :loading="pending" :error="error" @retry="refresh" />
   <template v-else>
-    <EmptyState v-if="!data.items.length" :title="t('schedule.empty')" :hint="t('schedule.emptyHint')" />
+    <EmptyState v-if="!data.items.length" :title="t('schedule.empty')" :hint="canCreate ? t('schedule.emptyHint') : t('schedule.emptyReadOnlyHint')" />
     <div v-else class="panel overflow-x-auto">
       <table class="data-table w-full">
         <thead>
@@ -75,7 +76,7 @@ const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned,
               <CronDescription :expression="task.cron" /><span class="ml-2 whitespace-nowrap text-xs text-muted">{{ task.timezone }}</span>
             </td>
             <td>
-              <button class="button" :disabled="busy" @click="toggle(task)">
+              <button v-if="task.can_edit" class="button" :disabled="busy" @click="toggle(task)">
                 {{ task.status === Status.active ? t('schedule.pause') : t('schedule.resume') }}
               </button>
             </td>

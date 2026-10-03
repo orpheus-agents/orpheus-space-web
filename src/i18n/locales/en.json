@@ -81,7 +81,7 @@
     "emailExample": "alice{'@'}example.com, bob{'@'}example.com",
     "sharedOnly": "Shared only",
     "shared": "Shared schedule",
-    "ownerHint": "All Space users can edit this field and this schedule.",
+    "ownerHint": "Choose an owner. Shared schedules without an owner can be changed only by users with full access.",
     "status": "Status",
     "next": "Next run",
     "lastRun": "Last run",
@@ -110,7 +110,12 @@
     "deleted": "This schedule has been deleted. Its history is retained.",
     "obsoleteEnv": "These names are no longer allowed. Uncheck them before saving.",
     "profile": "Profile",
-    "template": "Sandbox template"
+    "template": "Sandbox template",
+    "forbidden": "You can only change your own schedules. Your access may have changed.",
+    "readOnly": "This schedule is available for viewing only.",
+    "emailRequired": "Your session has no email. Sign out and sign in again. If the email is still missing, contact your administrator.",
+    "ownOwnerHint": "You can create schedules only for yourself. Only an administrator can change the owner.",
+    "emptyReadOnlyHint": "No schedules match these filters. Try changing the filters."
   },
   "cron": {
     "repeat": "Repeat",

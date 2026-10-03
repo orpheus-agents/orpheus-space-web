@@ -27,9 +27,14 @@ export function onAccessFailure(handler: (status: number) => void) {
 
 async function checkResponse(response: globalThis.Response, reportAccessFailure = true) {
   if (response.ok) return
-  if (reportAccessFailure && (response.status === 401 || response.status === 403)) accessFailure?.(response.status)
   const payload: Problem | null = await response.json().catch(() => null)
-  throw new ApiError(response.status, payload?.error)
+  const error = new ApiError(response.status, payload?.error)
+  if (reportAccessFailure && (response.status === 401 || response.status === 403) && !isScheduleForbidden(error)) accessFailure?.(response.status)
+  throw error
+}
+
+export function isScheduleForbidden(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 403 && error.problem?.code === 'schedule_forbidden'
 }
 
 export async function get<P extends GetPath>(

@@ -6,7 +6,7 @@ test('new schedule uses the signed-in email and hides empty extra ENV choices', 
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname
     if (path.endsWith('/auth/session')) return route.fulfill({ json: {
-      mode: 'saml', authenticated: true, read_access: true, write_access: true,
+      mode: 'saml', authenticated: true, read_access: true, write_access: true, can_manage_all: true,
       user: { subject: 'operator', display_name: 'Operator', email: 'operator@example.com' }, expires_at: timestamp,
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
@@ -40,7 +40,7 @@ test('list, editing, history and automatic result work in both themes', async ({
       path = new URL(request.url()).pathname
     if (path === '/api/v1/auth/session')
       return route.fulfill({
-        json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null },
+        json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null },
       })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
@@ -127,7 +127,7 @@ test('filters repeat owner emails, retain them across cursor pages and clear cur
     const url = new URL(route.request().url())
     return route.fulfill({
       json: url.pathname.endsWith('/auth/session')
-        ? { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null }
+        ? { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null }
         : { items: [], next_cursor: url.searchParams.has('cursor') ? null : 'opaque' },
     })
   })
@@ -165,7 +165,7 @@ test('schedule prompts render Markdown and front matter while preserving the edi
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname
     if (path.endsWith('/auth/session')) return route.fulfill({ json: {
-      mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null,
+      mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null,
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
@@ -252,7 +252,7 @@ test('readable schedules, aligned list data and clickable history rows', async (
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname
     if (path.endsWith('/auth/session')) return route.fulfill({ json: {
-      mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null,
+      mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null,
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
@@ -309,7 +309,7 @@ test('catalog choices support descriptions, keyboard search and preserved offlin
   await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname
-    if (path.endsWith('/auth/session')) return route.fulfill({ json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, user: null, expires_at: null } })
+    if (path.endsWith('/auth/session')) return route.fulfill({ json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null } })
     if (path.endsWith('/profiles') || path.endsWith('/templates')) {
       if (offline) return route.fulfill({ status: 503, json: { error: { code: 'core_unavailable' } } })
       const data = path.endsWith('/profiles') ? profiles() : templates()

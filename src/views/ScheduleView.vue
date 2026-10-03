@@ -27,7 +27,7 @@ const templateDescription = computed(() => catalogs.templates.data.value?.items.
       <h1 class="section-title break-words">{{ data.name }}</h1>
       <RefreshStatus :updated-at="updatedAt" :disconnected="disconnected || catalogs.disconnected.value" :pending="pending || catalogs.pending.value" @refresh="refresh(); catalogs.refresh()" />
     </div>
-    <div v-if="!data.deleted_at" class="mb-6 flex flex-wrap gap-3">
+    <div v-if="data.can_edit" class="mb-6 flex flex-wrap gap-3">
       <RouterLink class="button-primary" :to="`/schedules/${data.id}/edit`">{{ t('schedule.edit') }}</RouterLink>
       <button class="button" :disabled="busy" @click="toggle">
         {{ data.status === Status.active ? t('schedule.pause') : t('schedule.resume') }}
@@ -37,8 +37,8 @@ const templateDescription = computed(() => catalogs.templates.data.value?.items.
       </button>
       <button class="button text-danger-ink" :disabled="busy" @click="confirm = 'delete'">{{ t('common.delete') }}</button>
     </div>
-    <p v-else class="mb-6 text-sm text-muted">{{ t('schedule.deleted') }}</p>
-    <div v-if="confirm" class="panel mb-6 flex flex-wrap items-center gap-4 p-5" role="alert">
+    <p v-else class="mb-6 text-sm text-muted">{{ data.deleted_at ? t('schedule.deleted') : t('schedule.readOnly') }}</p>
+    <div v-if="confirm && data.can_edit" class="panel mb-6 flex flex-wrap items-center gap-4 p-5" role="alert">
       <p class="mr-auto">{{ confirm === 'delete' ? t('schedule.deleteConfirm') : t('schedule.resetConfirm') }}</p>
       <button class="button" :disabled="busy" @click="confirm = null">{{ t('common.cancel') }}</button><button class="button-primary" :disabled="busy" @click="execute">{{ t('common.confirm') }}</button>
     </div>

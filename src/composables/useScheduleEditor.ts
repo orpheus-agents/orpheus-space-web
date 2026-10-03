@@ -1,13 +1,13 @@
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ApiError, get, write } from '../api/client'
+import { ApiError, get, write, isScheduleForbidden } from '../api/client'
 import { SessionMode, Status, type CreateSchedule, type Settings } from '../api/generated'
 import { useCatalogs } from './useCatalogs'
 import { useSettings } from './useSettings'
 import { useAction } from './useAction'
 import { useToasts } from './useToasts'
-import { useAuthSession } from './useAuth'
+import { useAuthSession, useRefreshAuth } from './useAuth'
 
 const FIELDS = ['name', 'prompt', 'cron', 'timezone', 'status', 'model', 'owner_email', 'session_mode', 'env_from', 'profile', 'template'] as const
 export type Field = (typeof FIELDS)[number]
@@ -20,6 +20,9 @@ export function useScheduleEditor() {
   const id = typeof route.params.id === 'string' ? route.params.id : undefined
   const { timeZone } = useSettings()
   const session = useAuthSession()
+  const refreshAuth = useRefreshAuth()
+  const canManageAll = computed(() => session.value?.can_manage_all === true)
+  const canSave = ref(false)
   const form = reactive({
     name: '',
     prompt: '',
@@ -72,14 +75,29 @@ export function useScheduleEditor() {
   }
   async function load() {
     loading.value = true
+    canSave.value = false
     error.value = null
     try {
+      await refreshAuth()
+      if (controller.signal.aborted) return
+      if (!id && !session.value?.write_access) {
+        push(t('schedule.emailRequired'))
+        await router.replace('/schedules')
+        return
+      }
       const [options, task] = await Promise.all([
         get('/api/v1/schedules/settings', { signal: controller.signal }),
         id ? get('/api/v1/schedules/{id}', { signal: controller.signal, path: { id } }) : undefined,
       ])
       if (controller.signal.aborted) return
+      if (task && !task.can_edit) {
+        push(t(task.deleted_at ? 'schedule.deleted' : !session.value?.write_access ? 'schedule.emailRequired' : 'schedule.forbidden'))
+        await router.replace(`/schedules/${id}`)
+        return
+      }
       settings.value = options
+      canSave.value = true
+      if (!id && !canManageAll.value) form.owner_email = session.value?.user?.email ?? ''
       if (task) {
         originalSelection = { profile: task.profile, template: task.template }
         Object.assign(form, {
@@ -126,6 +144,10 @@ export function useScheduleEditor() {
   }
   function payload(): CreateSchedule {
     const body: CreateSchedule = { ...form, model: form.model.trim() || null, owner_email: form.owner_email.trim() || null, env_from: [...form.env_from] }
+    if (!canManageAll.value) {
+      if (id) delete body.owner_email
+      else body.owner_email = session.value?.user?.email
+    }
     if (id && originalSelection) {
       if (form.profile === originalSelection.profile) delete body.profile
       if (form.template === originalSelection.template) delete body.template
@@ -133,6 +155,7 @@ export function useScheduleEditor() {
     return body
   }
   async function save() {
+    if (!canSave.value) return
     if (!form.prompt.trim()) {
       fieldErrors.prompt = t('validation.required')
       push(t('validation.failed'))
@@ -155,7 +178,20 @@ export function useScheduleEditor() {
       {
         failure: 'common.saveFailed',
         // A field edited while the request ran must not be marked for the value it no longer holds.
-        onError: (cause) => (JSON.stringify(payload()) === serialized && applyProblem(cause) ? t('validation.failed') : undefined),
+        onError: async (cause) => {
+          if (isScheduleForbidden(cause)) {
+            const refreshed = await refreshAuth()
+            if (controller.signal.aborted) return undefined
+            if (id || refreshed && !session.value?.write_access) {
+              canSave.value = false
+              await router.replace(id ? `/schedules/${id}` : '/schedules')
+            } else if (refreshed && !canManageAll.value) {
+              form.owner_email = session.value?.user?.email ?? ''
+            }
+            return t('schedule.forbidden')
+          }
+          return JSON.stringify(payload()) === serialized && applyProblem(cause) ? t('validation.failed') : undefined
+        },
       },
     )
   }
@@ -166,6 +202,8 @@ export function useScheduleEditor() {
   })
   return {
     id,
+    canManageAll,
+    canSave,
     catalogs,
     form,
     fieldErrors,

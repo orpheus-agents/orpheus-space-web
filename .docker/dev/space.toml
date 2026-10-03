@@ -1,3 +1,6 @@
+[access]
+admin_emails = ["operator@example.test"]
+
 [execution.agent]
 profile = "default"
 [execution.sandbox]

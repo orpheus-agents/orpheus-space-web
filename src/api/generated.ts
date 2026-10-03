@@ -10,7 +10,10 @@ export type paths = {
         /** List schedules */
         get: operations["ListSchedules"];
         put?: never;
-        /** Create a schedule */
+        /**
+         * Create a schedule
+         * @description SAML non-admins can create only for their own email; an omitted owner is filled from the session. Explicit null or another owner returns 403 schedule_forbidden. Bearer, anonymous and admins have full access.
+         */
         post: operations["CreateSchedule"];
         delete?: never;
         options?: never;
@@ -31,11 +34,17 @@ export type paths = {
         get: operations["GetSchedule"];
         put?: never;
         post?: never;
-        /** Soft delete a schedule */
+        /**
+         * Soft delete a schedule
+         * @description SAML non-admins can delete only their own schedules. Denied writes return 403 schedule_forbidden.
+         */
         delete: operations["DeleteSchedule"];
         options?: never;
         head?: never;
-        /** Update selected schedule fields */
+        /**
+         * Update selected schedule fields
+         * @description SAML non-admins can update only their own schedules and cannot change or clear the owner. Denied writes return 403 schedule_forbidden.
+         */
         patch: operations["UpdateSchedule"];
         trace?: never;
     };
@@ -194,7 +203,10 @@ export type paths = {
         };
         get?: never;
         put?: never;
-        /** Detach the reusable session for the next occurrence */
+        /**
+         * Detach the reusable session for the next occurrence
+         * @description SAML non-admins can reset only their own schedules. Denied writes return 403 schedule_forbidden.
+         */
         post: operations["ResetSession"];
         delete?: never;
         options?: never;
@@ -341,6 +353,7 @@ export type components = {
             status?: components["schemas"]["Status"];
             model?: string | null;
             session_mode?: components["schemas"]["SessionMode"];
+            /** @description SAML non-admins must use their session email; omission fills it, explicit null is forbidden. Full-access callers may use any owner or null. */
             owner_email?: string | null;
             env_from?: components["schemas"]["EnvFrom"];
         };
@@ -360,6 +373,8 @@ export type components = {
             env_from?: components["schemas"]["EnvFrom"];
         };
         Schedule: {
+            /** @description Whether this caller may modify the current schedule. False for deleted schedules. Computed from current ownership even on an idempotent creation replay; busy state can still prevent session reset. */
+            can_edit: boolean;
             /** @description Stored Orpheus profile name. */
             profile: string;
             /** @description Stored Orpheus template name. */
@@ -412,7 +427,10 @@ export type components = {
             mode: AuthSessionMode;
             authenticated: boolean;
             read_access: boolean;
+            /** @description Can create schedules and modify those available to this caller. SAML users without an email cannot write. */
             write_access: boolean;
+            /** @description Can manage all schedules and assign or clear their owners. True for configured SAML admins, valid Bearer keys and anonymous mode. */
+            can_manage_all: boolean;
             user: {
                 subject: string;
                 display_name: string;
@@ -507,7 +525,7 @@ export type components = {
         } | null;
     };
     responses: {
-        /** @description Structured API error. 401 credentials, 403 CSRF, 404 missing, 409 conflict, 422 validation, 503 unavailable. */
+        /** @description Structured API error. 401 credentials, 403 CSRF or schedule_forbidden, 404 missing, 409 conflict, 422 validation, 503 unavailable. */
         Problem: {
             headers: {
                 [name: string]: unknown;

@@ -14,9 +14,104 @@ afterEach(() => {
   wrapper?.unmount()
   vi.unstubAllGlobals()
 })
+
+it('locks the owner for members and never sends a modified form owner', async () => {
+  const { state, session, fetcher } = await setup(false, 'alice@example.com', {}, true)
+  session.value = { ...session.value, can_manage_all: false }
+  await flushPromises()
+  expect(wrapper.get('input[type="email"]').attributes('readonly')).toBeDefined()
+  state.form.name = 'Test'
+  state.form.prompt = 'Work'
+  state.form.owner_email = 'forged@example.com'
+  const requests: RequestInit[] = []
+  fetcher.mockImplementation((_url: string, options?: RequestInit) => {
+    if (options?.method) requests.push(options)
+    return Promise.resolve(Response.json(schedule()))
+  })
+  await state.save()
+  expect(JSON.parse(requests[0].body as string).owner_email).toBe('alice@example.com')
+  wrapper.unmount()
+  const edit = await setup(true, 'alice@example.com')
+  edit.session.value = { ...edit.session.value, can_manage_all: false }
+  edit.fetcher.mockImplementation((_url: string, options?: RequestInit) => {
+    if (options?.method) requests.push(options)
+    return Promise.resolve(Response.json(schedule()))
+  })
+  await edit.state.save()
+  expect(JSON.parse(requests[1].body as string)).not.toHaveProperty('owner_email')
+})
+
+it('blocks a direct create route without email and sends no write', async () => {
+  const { state, session, router, fetcher } = await setup()
+  session.value = { ...session.value, can_manage_all: false, write_access: false }
+  fetcher.mockClear()
+  await state.load()
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/schedules')
+  expect(state.canSave.value).toBe(false)
+  await state.save()
+  expect(fetcher).not.toHaveBeenCalled()
+})
+
+it('blocks editing when server permissions deny it even for a cached admin session', async () => {
+  const { state, fetcher, router } = await setup(true, 'admin@example.com')
+  fetcher.mockImplementation(() => Promise.resolve(Response.json(schedule({ can_edit: false }))))
+  await state.load()
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/schedules/id')
+  expect(state.canSave.value).toBe(false)
+  fetcher.mockClear()
+  await state.save()
+  expect(fetcher).not.toHaveBeenCalled()
+})
+
+it('returns to the card with a local notification if permission is lost while editing', async () => {
+  const { state, fetcher, router, notifications } = await setup(true, 'alice@example.com')
+  fetcher.mockImplementation(() => Promise.resolve(Response.json({ error: { code: 'schedule_forbidden' } }, { status: 403 })))
+  await state.save()
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/schedules/id')
+  expect(state.canSave.value).toBe(false)
+  expect(notifications.toasts.value.at(-1)?.message).toContain('You can only change your own schedules')
+})
+
+it('preserves a new draft and fixes the owner when an administrator loses full access', async () => {
+  const { state, session, refreshAuth, fetcher, router } = await setup(false, 'alice@example.com')
+  state.form.name = 'Important draft'
+  state.form.prompt = 'Keep these instructions'
+  state.form.owner_email = 'bob@example.com'
+  refreshAuth.mockImplementation(async () => { session.value = { ...session.value, can_manage_all: false }; return true })
+  fetcher.mockImplementation(() => Promise.resolve(Response.json({ error: { code: 'schedule_forbidden' } }, { status: 403 })))
+  await state.save()
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/schedules/new')
+  expect(state.canSave.value).toBe(true)
+  expect(state.form).toMatchObject({ name: 'Important draft', prompt: 'Keep these instructions', owner_email: 'alice@example.com' })
+  expect(state.canManageAll.value).toBe(false)
+})
+
+it('preserves the draft if the permission refresh is temporarily unavailable', async () => {
+  const { state, refreshAuth, fetcher, router } = await setup(false, 'alice@example.com')
+  state.form.name = 'Important draft'
+  state.form.prompt = 'Keep these instructions'
+  refreshAuth.mockResolvedValue(false)
+  fetcher.mockImplementation(() => Promise.resolve(Response.json({ error: { code: 'schedule_forbidden' } }, { status: 403 })))
+  await state.save()
+  expect(router.currentRoute.value.path).toBe('/schedules/new')
+  expect(state.canSave.value).toBe(true)
+  expect(state.form.prompt).toBe('Keep these instructions')
+})
+
+it('explains deletion instead of ownership when an editor URL points to a deleted schedule', async () => {
+  const { state, fetcher, notifications } = await setup(true, 'alice@example.com')
+  fetcher.mockImplementation(() => Promise.resolve(Response.json(schedule({ can_edit: false, deleted_at: '2026-10-03T00:00:00Z' }))))
+  await state.load()
+  expect(notifications.toasts.value.at(-1)?.message).toBe('This schedule has been deleted. Its history is retained.')
+})
 async function setup(edit = false, email: string | null = null, settings: Partial<Settings> = {}, renderForm = false, catalogs: { profiles: Profiles | null; templates: Templates | null } = { profiles: profiles(), templates: templates() }) {
+  const refreshAuth = vi.fn(async () => true)
   const session = shallowRef<AuthSession>({
-    mode: AuthSessionMode.saml, authenticated: true, read_access: true, write_access: true,
+    mode: AuthSessionMode.saml, authenticated: true, read_access: true, write_access: true, can_manage_all: true,
     user: { subject: 'operator', display_name: 'Operator', email }, expires_at: null,
   })
   const fetcher = vi.fn((url: string) => {
@@ -34,6 +129,7 @@ async function setup(edit = false, email: string | null = null, settings: Partia
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
+      { path: '/schedules', component: { render: () => null } },
       { path: '/schedules/new', component: { render: () => null } },
       { path: '/schedules/:id/edit', component: { render: () => null } },
       { path: '/schedules/:id', component: { render: () => null } },
@@ -54,14 +150,14 @@ async function setup(edit = false, email: string | null = null, settings: Partia
       components: { Child },
       setup() {
         notifications = provideToasts()
-        provideAuthSession(session)
+        provideAuthSession(session, refreshAuth)
       },
       template: '<Child />',
     }),
     { global: { plugins: [router] } },
   )
   await flushPromises()
-  return { state, fetcher, notifications, session }
+  return { state, fetcher, notifications, session, router, refreshAuth }
 }
 it('prefills the owner once for new schedules, leaving edits and cleared values alone', async () => {
   const first = await setup(false, 'operator@example.com')

@@ -18,5 +18,5 @@ const editor = useScheduleEditor()
     :error="editor.error.value"
     @retry="editor.load"
   />
-  <ScheduleForm v-else :editor="editor" />
+  <ScheduleForm v-else-if="editor.canSave.value" :editor="editor" />
 </template>

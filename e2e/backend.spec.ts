@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
 const saml = !!process.env.INTEGRATION_SAML
+test.describe.configure({ mode: 'serial' })
 
 test('real catalogs, nginx and Space support browser CRUD and offline edits', async ({ page, request, baseURL }) => {
   test.setTimeout(90_000)
@@ -102,5 +103,66 @@ test('real catalogs, nginx and Space support browser CRUD and offline edits', as
     expect((await page.request.get('/api/v1/schedules')).status()).toBe(401)
   } else {
     expect((await page.request.post('/auth/logout', { headers: { Origin: baseURL!, 'X-Orpheus-CSRF': '1' } })).status()).toBe(204)
+  }
+})
+
+test('real SAML separates admin, owner and another user while Bearer retains full access', async ({ browser, baseURL }) => {
+  test.skip(!saml, 'Requires SAML identities')
+  test.setTimeout(120_000)
+  const contexts = await Promise.all(['alice', 'bob', 'operator'].map(() => browser.newContext({ baseURL, ignoreHTTPSErrors: true })))
+  try {
+    const pages = []
+    for (const [index, username] of ['alice', 'bob', 'operator'].entries()) {
+      const page = await contexts[index].newPage()
+      await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
+      await page.goto('/schedules')
+      await page.getByLabel('Username or email').fill(username)
+      await page.getByLabel('Password', { exact: true }).fill('fixture-password')
+      await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+      await expect(page.getByRole('heading', { name: 'Schedules', exact: true })).toBeVisible()
+      const state = await (await page.request.get('/api/v1/auth/session')).json()
+      expect(state).toMatchObject({ write_access: true, can_manage_all: username === 'operator', user: { email: `${username}@example.test` } })
+      pages.push(page)
+    }
+    const [alice, bob, admin] = pages
+    await alice.goto('/schedules/new')
+    await expect(alice.getByRole('textbox', { name: /^Owner email/ })).toHaveAttribute('readonly', '')
+    await expect(alice.getByRole('textbox', { name: /^Owner email/ })).toHaveValue('alice@example.test')
+    await alice.getByLabel('Name', { exact: true }).fill('Owner access integration')
+    await alice.getByLabel('Prompt', { exact: true }).fill('Test ownership')
+    await expect(alice.getByRole('button', { name: 'Profile', exact: true })).toHaveText('default')
+    await alice.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(alice.getByRole('heading', { name: 'Owner access integration' })).toBeVisible()
+    const path = new URL(alice.url()).pathname, apiPath = `/api/v1${path}`
+    const headers = { Origin: baseURL!, 'X-Orpheus-CSRF': '1' }
+    await bob.goto(path)
+    await expect(bob.getByRole('link', { name: 'Edit schedule' })).toHaveCount(0)
+    await expect(bob.getByText('This schedule is available for viewing only.')).toBeVisible()
+    await bob.goto(`${path}/edit`)
+    await expect(bob).toHaveURL(new RegExp(`${path}$`))
+    expect((await bob.request.patch(apiPath, { headers, data: { name: 'Forbidden' } })).status()).toBe(403)
+    expect((await bob.request.delete(apiPath, { headers })).status()).toBe(403)
+    expect((await bob.request.post(`${apiPath}/reset-session`, { headers })).status()).toBe(403)
+    for (const owner of ['bob@example.test', null]) {
+      expect((await alice.request.patch(apiPath, { headers, data: { owner_email: owner } })).status()).toBe(403)
+      expect((await alice.request.post('/api/v1/schedules', { headers, data: { name: 'Forbidden', prompt: 'Work', cron: '0 9 * * *', timezone: 'UTC', owner_email: owner } })).status()).toBe(403)
+    }
+    expect((await alice.request.patch(apiPath, { headers, data: { status: 'paused' } })).status()).toBe(200)
+    expect((await alice.request.post(`${apiPath}/reset-session`, { headers })).status()).toBe(200)
+    expect((await bob.request.get(`${apiPath}/occurrences`)).status()).toBe(200)
+    await admin.goto(`${path}/edit`)
+    await expect(admin.getByRole('textbox', { name: /^Owner email/ })).toBeEditable()
+    await admin.getByRole('textbox', { name: /^Owner email/ }).fill('bob@example.test')
+    await admin.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(admin).toHaveURL(new RegExp(`${path}$`))
+    expect((await alice.request.patch(apiPath, { headers, data: { status: 'active' } })).status()).toBe(403)
+    expect((await bob.request.patch(apiPath, { headers, data: { status: 'active' } })).status()).toBe(200)
+    // Bearer wins over Alice's now-unprivileged cookie and needs no CSRF headers.
+    const bearer = { Authorization: 'Bearer integration-only-key' }
+    expect((await alice.request.patch(apiPath, { headers: bearer, data: { owner_email: null } })).status()).toBe(200)
+    expect((await bob.request.patch(apiPath, { headers, data: { owner_email: 'bob@example.test' } })).status()).toBe(403)
+    expect((await alice.request.delete(apiPath, { headers: bearer })).status()).toBe(204)
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()))
   }
 })

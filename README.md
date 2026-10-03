@@ -15,8 +15,11 @@ Vue 3, TypeScript, Vite, Tailwind CSS and Vue Router; English/Russian and light/
 Create and edit schedules, pause/resume, filter by multiple owner emails or unowned
 schedules, choose profiles, sandbox templates and allowed ENV names and reset reusable context. The list shows each
 schedule's last run; validation problems from the API appear under their fields.
-All users with Space access can edit all schedules. Owner email is an editable
-filter. The header lists Skills as a coming section without a route or API; chat
+All users with Space access can read all schedules and their history/results.
+SAML administrators configured in Space can manage every schedule; other users
+can create only for themselves and modify only their own schedules. Editing,
+pause/resume, deletion and context reset follow the backend's `can_edit` flag.
+Users without an email can only read. The header lists Skills as a coming section without a route or API; chat
 is not shown yet.
 
 The repeat rule is edited as a plain schedule: daily, weekdays, chosen days, monthly,
@@ -66,7 +69,8 @@ require that exact Origin. For a standalone API on port 8010, point the Vite
 upstream to `http://127.0.0.1:8010`. Normal dev/integration uses nginx.
 
 `npm run stack:start:saml` starts an isolated HTTPS Keycloak preview at
-`https://localhost:19443`. Login: `operator` / `fixture-password`; certificates
+`https://localhost:19443`. The `operator` user is an administrator, while `alice`
+and `bob` are ordinary users. All use `fixture-password`. Certificates
 are disposable and self-signed. The separate technical-panel test client requires
 a role this user does not have. Space access does not grant technical-panel access.
 
@@ -121,8 +125,15 @@ New schedules take the UI timezone at creation. Existing schedules keep their
 stored timezone; changing the header's timezone changes only date display.
 Preview always labels and uses the task timezone.
 The owner email of a new schedule is prefilled from the signed-in user's SAML
-email, when available. It remains editable and may be cleared for a shared
-schedule. Editing an existing schedule preserves its owner.
+email. Ordinary users see a read-only owner field; editing omits the owner from
+PATCH. Users with `can_manage_all` can assign or clear it to create a shared
+schedule. Direct editor URLs check the server's permissions and return to the
+card/list when access is denied. A 403 `schedule_forbidden` produces a local
+notification and preserves browsing; 401 and CSRF errors retain the global
+access handling. Opening an editor or receiving `schedule_forbidden` refreshes
+session permissions without reloading the page. If an administrator loses full
+access while creating a schedule, the draft is kept and its owner switches to
+the current user. The server enforces every restriction independently of the UI.
 Additional ENV choices are hidden when the allowlist has no names beyond the
 base list. Previously selected names that are no longer allowed remain visible
 so the user can remove them.
@@ -141,3 +152,12 @@ so the user can remove them.
 CI runs all checks before publishing a `v*.*.*` tag to
 `retailcrm/orpheus-space-web` for linux/amd64 and linux/arm64. Publishing uses
 `vars.DOCKERHUB_USERNAME` and `secrets.DOCKERHUB_TOKEN`.
+
+The audit temporarily allows [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+only on the three Tailwind 3 dependency paths listed in `audit-ci.json`, until
+2026-11-03. The affected `braces` package has no patched release. These build tools
+receive checked-in glob patterns from `tailwind.config.ts`, not schedule text or
+browser input, and are absent from the static nginx runtime. Production dependencies
+are audited separately without exceptions. New advisories, other dependency paths
+and expired exceptions still fail the audit. Remove the exception when a fixed
+dependency is available or Tailwind is upgraded.

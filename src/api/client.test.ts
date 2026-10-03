@@ -44,3 +44,13 @@ it('reports access failures but keeps storage errors separate', async () => {
   expect(report).toHaveBeenCalledWith(401)
   unsubscribe()
 })
+
+it.each([
+  ['schedule_forbidden', false], ['csrf_failed', true], ['unknown', true],
+])('handles 403 %s without confusing resource permissions with browser access', async (code, global) => {
+  const report = vi.fn(), unsubscribe = onAccessFailure(report)
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ error: { code } }, { status: 403 })))
+  await expect(write('delete', '/api/v1/schedules/{id}', { path: { id: 'id' }, signal: new AbortController().signal })).rejects.toMatchObject({ status: 403, problem: { code } })
+  expect(report).toHaveBeenCalledTimes(global ? 1 : 0)
+  unsubscribe()
+})
