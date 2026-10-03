@@ -42,11 +42,12 @@ function changeZone(value: string) {
         </div>
         <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.owner') }}</span><input
           v-model="form.owner_email"
+          :readonly="!editor.canManageAll.value"
           :aria-label="t('schedule.owner')"
           type="email"
           class="field w-full"
           :placeholder="t('schedule.shared')"
-        ><FieldError :message="fieldErrors.owner_email" /><span class="mt-2 block text-xs text-muted">{{ t('schedule.ownerHint') }}</span></label>
+        ><FieldError :message="fieldErrors.owner_email" /><span class="mt-2 block text-xs text-muted">{{ editor.canManageAll.value ? t('schedule.ownerHint') : t('schedule.ownOwnerHint') }}</span></label>
       </section>
       <section class="panel space-y-5 p-5">
         <h2 class="panel-title">{{ t('schedule.timing') }}</h2>
@@ -113,7 +114,7 @@ function changeZone(value: string) {
       <FieldError :message="fieldErrors.env_from" />
     </section>
     <div class="flex flex-wrap gap-3">
-      <button class="button-primary" type="submit" :disabled="editor.busy.value">{{ t('common.save') }}</button>
+      <button class="button-primary" type="submit" :disabled="editor.busy.value || !editor.canSave.value">{{ t('common.save') }}</button>
       <RouterLink class="button" :to="editor.id ? `/schedules/${editor.id}` : '/schedules'">{{ t('common.cancel') }}</RouterLink>
     </div>
   </form>

@@ -1,13 +1,13 @@
 import { onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ApiError } from '../api/client'
+import { ApiError, isScheduleForbidden } from '../api/client'
 import { useToasts } from './useToasts'
 
 type Options = {
   /** Toast key for failures other than conflicts; loads and saves read differently. */
   failure?: string
   /** Returns the toast for an error it handled itself, or nothing to fall back to the defaults. */
-  onError?: (error: unknown) => string | undefined
+  onError?: (error: unknown) => string | undefined | Promise<string | undefined>
 }
 
 export function useAction() {
@@ -25,7 +25,9 @@ export function useAction() {
     } catch (error) {
       if (!controller.signal.aborted) {
         const conflict = error instanceof ApiError && error.status === 409
-        push(options.onError?.(error) ?? (conflict ? t('common.conflict') : t(options.failure ?? 'common.requestFailed')))
+        const message = await options.onError?.(error)
+        // An error handler may navigate away and unmount this composable before the toast.
+        push(message ?? (isScheduleForbidden(error) ? t('schedule.forbidden') : conflict ? t('common.conflict') : t(options.failure ?? 'common.requestFailed')))
       }
     } finally {
       clearTimeout(timer)

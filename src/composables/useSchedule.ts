@@ -1,9 +1,10 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { get, write } from '../api/client'
+import { get, write, isScheduleForbidden } from '../api/client'
 import { Status } from '../api/generated'
 import { useResource } from './useResource'
 import { useAction } from './useAction'
+import { useRefreshAuth } from './useAuth'
 export function useSchedule() {
   const route = useRoute(),
     router = useRouter()
@@ -13,8 +14,18 @@ export function useSchedule() {
     () => (route.name === 'schedule' ? id.value : null),
   )
   const action = useAction()
+  const refreshAuth = useRefreshAuth()
   const confirm = ref<'delete' | 'reset' | null>(null)
+  watch(() => resource.data.value?.can_edit, (canEdit) => { if (!canEdit) confirm.value = null })
+  async function onError(error: unknown) {
+    if (isScheduleForbidden(error)) {
+      confirm.value = null
+      await Promise.all([resource.refresh(), refreshAuth()])
+    }
+    return undefined
+  }
   async function toggle() {
+    if (!resource.data.value?.can_edit) return
     await action.run(async (signal) => {
       await write('patch', '/api/v1/schedules/{id}', {
         signal,
@@ -22,9 +33,10 @@ export function useSchedule() {
         body: { status: resource.data.value?.status === Status.active ? Status.paused : Status.active },
       })
       await resource.refresh()
-    })
+    }, { onError })
   }
   async function execute() {
+    if (!resource.data.value?.can_edit || !confirm.value) return
     await action.run(async (signal) => {
       if (confirm.value === 'delete') {
         await write('delete', '/api/v1/schedules/{id}', { signal, path: { id: id.value } })
@@ -34,7 +46,7 @@ export function useSchedule() {
         await resource.refresh()
       }
       confirm.value = null
-    })
+    }, { onError })
   }
   return { ...resource, id, toggle, busy: action.busy, confirm, execute }
 }

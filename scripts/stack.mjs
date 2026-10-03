@@ -114,6 +114,13 @@ async function setupSAML() {
       },
     ],
   }
+  for (const username of ['alice', 'bob']) {
+    realm.users.push({
+      username, firstName: 'Test', lastName: username,
+      email: `${username}@example.test`, emailVerified: true, enabled: true,
+      credentials: [{ type: 'password', value: 'fixture-password', temporary: false }],
+    })
+  }
   // This user has Space access, but no role granting the technical-panel client.
   const gateId = 'a5555555-5555-4555-8555-555555555555'
   realm.roles = { realm: [{ name: 'core-access' }] }

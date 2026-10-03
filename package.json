@@ -1,7 +1,7 @@
 {
   "name": "orpheus-space-web",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -20,7 +20,7 @@
     "stack:start:saml": "node scripts/stack.mjs start-saml",
     "stack:stop": "node scripts/stack.mjs stop",
     "test:integration": "node scripts/stack.mjs test",
-    "audit": "npm audit --audit-level=moderate",
+    "audit": "npm audit --omit=dev --audit-level=moderate && audit-ci --config audit-ci.json",
     "lint:api": "redocly lint --config redocly.yaml api/upstream.yaml"
   },
   "dependencies": {
@@ -50,6 +50,7 @@
     "@types/node": "^25.9.3",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/test-utils": "^2.4.6",
+    "audit-ci": "7.1.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^10.3.0",
     "eslint-plugin-vue": "^10.9.1",

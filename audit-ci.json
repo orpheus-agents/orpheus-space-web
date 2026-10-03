@@ -1,0 +1,27 @@
+{
+  "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
+  "moderate": true,
+  "allowlist": [
+    {
+      "GHSA-vfj7-8cjw-p6xm|tailwindcss>chokidar>braces": {
+        "notes": "Build-only Tailwind 3 path. Brace patterns come from the checked-in content configuration, not user input. No patched braces release exists. See README security exception.",
+        "expiry": "2026-11-03T00:00:00Z",
+        "active": true
+      }
+    },
+    {
+      "GHSA-vfj7-8cjw-p6xm|fast-glob>micromatch>braces>": {
+        "notes": "Build-only Tailwind 3 path with trusted repository glob patterns. See README security exception.",
+        "expiry": "2026-11-03T00:00:00Z",
+        "active": true
+      }
+    },
+    {
+      "GHSA-vfj7-8cjw-p6xm|micromatch>braces>": {
+        "notes": "Build-only Tailwind 3 path with trusted repository glob patterns. See README security exception.",
+        "expiry": "2026-11-03T00:00:00Z",
+        "active": true
+      }
+    }
+  ]
+}

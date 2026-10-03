@@ -6,6 +6,7 @@ export function schedule(overrides: Partial<Schedule> = {}): Schedule {
   return {
     id: taskID,
     url: null,
+    can_edit: true,
     name: 'Daily report',
     prompt: 'Summarize incidents',
     cron: '0 9 * * *',

@@ -1,12 +1,16 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { get, write } from '../api/client'
+import { get, write, isScheduleForbidden } from '../api/client'
 import { Status, type Schedule } from '../api/generated'
 import { useAction } from './useAction'
 import { useResource } from './useResource'
+import { useAuthSession, useRefreshAuth } from './useAuth'
 export function useSchedules() {
   const route = useRoute(),
     router = useRouter()
+  const session = useAuthSession()
+  const refreshAuth = useRefreshAuth()
+  const canCreate = computed(() => session.value?.write_access === true)
   const owners = ref(
     [route.query.owner_email]
       .flat()
@@ -63,6 +67,7 @@ export function useSchedules() {
     await router.push({ query: { ...route.query, cursor: next } })
   }
   async function toggle(task: Schedule) {
+    if (!task.can_edit) return
     await action.run(async (signal) => {
       await write('patch', '/api/v1/schedules/{id}', {
         signal,
@@ -70,7 +75,10 @@ export function useSchedules() {
         body: { status: task.status === Status.active ? Status.paused : Status.active },
       })
       await resource.refresh()
-    })
+    }, { onError: async (error) => {
+      if (isScheduleForbidden(error)) await Promise.all([resource.refresh(), refreshAuth()])
+      return undefined
+    } })
   }
-  return { ...resource, owners, unowned, status, cursor, apply, page, toggle, busy: action.busy }
+  return { ...resource, owners, unowned, status, cursor, apply, page, toggle, canCreate, busy: action.busy }
 }
