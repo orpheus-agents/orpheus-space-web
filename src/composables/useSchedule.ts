@@ -4,6 +4,7 @@ import { get, write, isScheduleForbidden } from '../api/client'
 import { Status } from '../api/generated'
 import { useResource } from './useResource'
 import { useAction } from './useAction'
+import { useResumeError } from './useResumeError'
 import { useRefreshAuth } from './useAuth'
 export function useSchedule() {
   const route = useRoute(),
@@ -14,6 +15,7 @@ export function useSchedule() {
     () => (route.name === 'schedule' ? id.value : null),
   )
   const action = useAction()
+  const resumeError = useResumeError()
   const refreshAuth = useRefreshAuth()
   const confirm = ref<'delete' | 'reset' | null>(null)
   watch(() => resource.data.value?.can_edit, (canEdit) => { if (!canEdit) confirm.value = null })
@@ -22,7 +24,7 @@ export function useSchedule() {
       confirm.value = null
       await Promise.all([resource.refresh(), refreshAuth()])
     }
-    return undefined
+    return resumeError(error)
   }
   async function toggle() {
     if (!resource.data.value?.can_edit) return

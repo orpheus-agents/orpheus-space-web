@@ -13,6 +13,7 @@ import RefreshStatus from '../components/RefreshStatus.vue'
 import HistoryPanel from '../components/HistoryPanel.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import RichText from '../components/RichText.vue'
+import SelectedServices from '../components/SelectedServices.vue'
 const { t, locale } = useI18n()
 const { timeZone } = useSettings()
 const catalogs = useCatalogs()
@@ -76,11 +77,11 @@ const templateDescription = computed(() => catalogs.templates.data.value?.items.
           <dt class="caps mb-2 text-muted">{{ t('schedule.sessionMode') }}</dt>
           <dd>{{ t(`sessionMode.${data.session_mode}`) }}</dd>
         </div>
-        <div class="sm:col-span-2">
-          <dt class="caps mb-2 text-muted">{{ t('schedule.extraEnv') }}</dt>
-          <dd class="font-mono">{{ data.env_from.join(', ') || t('common.none') }}</dd>
-        </div>
       </dl>
+      <section class="mb-6" :aria-label="t('services.title')">
+        <h2 class="caps mb-3 text-muted">{{ t('services.title') }}</h2>
+        <SelectedServices :codes="data.services" :items="catalogs.services.data.value?.items ?? null" :unavailable="catalogs.services.disconnected.value" />
+      </section>
       <h2 class="caps mb-3 text-muted">{{ t('schedule.prompt') }}</h2>
       <RichText :text="data.prompt" />
     </section>

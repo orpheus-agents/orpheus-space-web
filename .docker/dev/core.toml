@@ -18,3 +18,13 @@ model = "research-model"
 [profiles.research.auth]
 mode = "api_key"
 api_key_env = "OPENAI_API_KEY"
+
+[services.gitlab]
+name = "GitLab"
+description = "Work with repositories and merge requests"
+env_from = ["GITLAB_HOST", "GITLAB_TOKEN"]
+
+[services.orpheus-space]
+name = "Orpheus Space"
+description = "Manage scheduled tasks"
+env_from = ["ORPHEUS_SPACE_HOST", "ORPHEUS_SPACE_API_KEY"]

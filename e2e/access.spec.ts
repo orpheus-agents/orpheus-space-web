@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { schedule, profiles, templates, occurrence, taskID } from '../src/test/fixtures'
+import { schedule, profiles, templates, services, occurrence, taskID } from '../src/test/fixtures'
 
 async function fixture(page: Page, email: string | null = 'alice@example.com') {
   let allowed = true
@@ -14,7 +14,7 @@ async function fixture(page: Page, email: string | null = 'alice@example.com') {
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
-    if (path.endsWith('/settings')) return route.fulfill({ json: { base_env_from: [], allowed_env_from: [], browser_auth: 'saml' } })
+    if (path.endsWith('/services')) return route.fulfill({ json: services() })
     if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [occurrence()], next_cursor: null } })
     if (req.method() !== 'GET') {
       const wrongOwner = req.method() === 'POST' && path === '/api/v1/schedules' && !admin && req.postDataJSON().owner_email !== email

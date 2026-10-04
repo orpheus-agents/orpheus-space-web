@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { profiles, templates, schedule, occurrence, taskID, occurrenceID, timestamp } from '../src/test/fixtures'
+import { profiles, templates, services, schedule, occurrence, taskID, occurrenceID, timestamp } from '../src/test/fixtures'
 
-test('new schedule uses the signed-in email and hides empty extra ENV choices', async ({ page }) => {
+test('new schedule uses the signed-in email and handles an empty service catalog', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname
@@ -11,15 +11,13 @@ test('new schedule uses the signed-in email and hides empty extra ENV choices', 
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
-    if (path.endsWith('/settings')) return route.fulfill({ json: {
-      base_env_from: ['A'], allowed_env_from: ['A'], browser_auth: 'saml',
-    } })
+    if (path.endsWith('/services')) return route.fulfill({ json: { items: [] } })
     return route.fulfill({ json: schedule() })
   })
   await page.goto('/schedules/new')
   const owner = page.getByRole('textbox', { name: /^Owner email/ })
   await expect(owner).toHaveValue('operator@example.com')
-  await expect(page.getByRole('group', { name: 'Additional ENV names' })).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'Services', exact: true })).toContainText('No services configured')
   await expect(page.getByRole('checkbox')).toHaveCount(0)
   await owner.fill('')
   await expect(owner).toHaveValue('')
@@ -44,8 +42,7 @@ test('list, editing, history and automatic result work in both themes', async ({
       })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
-    if (path.endsWith('/settings'))
-      return route.fulfill({ json: { base_env_from: ['A'], allowed_env_from: ['A', 'B'], browser_auth: 'anonymous' } })
+    if (path.endsWith('/services')) return route.fulfill({ json: services() })
     if (path.endsWith('/preview'))
       return route.fulfill({
         json: { times: Array.from({ length: 5 }, (_, i) => new Date(Date.parse(timestamp) + i * 86400000).toISOString()) },
@@ -169,7 +166,7 @@ test('schedule prompts render Markdown and front matter while preserving the edi
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
-    if (path.endsWith('/settings')) return route.fulfill({ json: { base_env_from: [], allowed_env_from: [], browser_auth: 'anonymous' } })
+    if (path.endsWith('/services')) return route.fulfill({ json: services() })
     if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [], next_cursor: null } })
     if (route.request().method() === 'PATCH') task = { ...task, ...route.request().postDataJSON() }
     return route.fulfill({ json: task })
@@ -240,7 +237,7 @@ test('readable schedules, aligned list data and clickable history rows', async (
   const run = occurrence({ scheduled_at: '2026-10-02T13:00:00Z', observed_at: '2026-10-02T13:07:00Z', execution_started_at: '2026-10-02T13:00:00Z', finished_at: '2026-10-02T13:07:00Z' })
   const task = schedule({
     name: 'Мониторинг всплесков HTTP 500 ядра', owner_email: 'operator@example.com',
-    cron: '*/30 * * * *', env_from: [], next_run_at: '2026-10-02T14:00:00Z', last_occurrence: run,
+    cron: '*/30 * * * *', services: [], next_run_at: '2026-10-02T14:00:00Z', last_occurrence: run,
     prompt: '## Мониторинг ошибок\n\nКаждые 30 минут проверяй production-ошибки и сообщай только о новых существенных всплесках.\n\n- Сравни события с обычным фоном.\n- Проверь, что об ошибке ещё не сообщали.',
   })
   await page.setViewportSize({ width: 1600, height: 1000 })
@@ -256,7 +253,7 @@ test('readable schedules, aligned list data and clickable history rows', async (
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
-    if (path.endsWith('/settings')) return route.fulfill({ json: { base_env_from: [], allowed_env_from: [], browser_auth: 'anonymous' } })
+    if (path.endsWith('/services')) return route.fulfill({ json: services() })
     if (path.endsWith('/result')) return route.fulfill({ json: {
       run_status: 'completed', fetched_at: timestamp,
       final_message: { id: occurrenceID, text: '**Проверка завершена.** Новых существенных всплесков нет.', created_at: timestamp }, error: null,
@@ -316,7 +313,7 @@ test('catalog choices support descriptions, keyboard search and preserved offlin
       if (removed) data.items = data.items.filter((item) => item.is_default)
       return route.fulfill({ json: data })
     }
-    if (path.endsWith('/settings')) return route.fulfill({ json: { base_env_from: [], allowed_env_from: [], browser_auth: 'anonymous' } })
+    if (path.endsWith('/services')) return route.fulfill(offline ? { status: 503, json: { error: { code: 'core_unavailable' } } } : { json: services() })
     if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [], next_cursor: null } })
     if (route.request().method() === 'POST' || route.request().method() === 'PATCH') {
       const body = route.request().postDataJSON()

@@ -5,4 +5,3 @@ admin_emails = ["operator@example.test"]
 profile = "default"
 [execution.sandbox]
 template = "fixture"
-env_from = ["A"]

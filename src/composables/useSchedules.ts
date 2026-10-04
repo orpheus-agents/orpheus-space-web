@@ -3,6 +3,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { get, write, isScheduleForbidden } from '../api/client'
 import { Status, type Schedule } from '../api/generated'
 import { useAction } from './useAction'
+import { useResumeError } from './useResumeError'
 import { useResource } from './useResource'
 import { useAuthSession, useRefreshAuth } from './useAuth'
 export function useSchedules() {
@@ -49,6 +50,7 @@ export function useSchedules() {
     },
   )
   const action = useAction()
+  const resumeError = useResumeError()
   async function apply() {
     await router.replace({
       query: {
@@ -77,7 +79,7 @@ export function useSchedules() {
       await resource.refresh()
     }, { onError: async (error) => {
       if (isScheduleForbidden(error)) await Promise.all([resource.refresh(), refreshAuth()])
-      return undefined
+      return resumeError(error)
     } })
   }
   return { ...resource, owners, unowned, status, cursor, apply, page, toggle, canCreate, busy: action.busy }
