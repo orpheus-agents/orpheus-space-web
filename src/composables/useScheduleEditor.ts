@@ -2,14 +2,14 @@ import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } fr
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ApiError, get, write, isScheduleForbidden } from '../api/client'
-import { SessionMode, Status, type CreateSchedule, type Settings } from '../api/generated'
+import { SessionMode, Status, type CreateSchedule } from '../api/generated'
 import { useCatalogs } from './useCatalogs'
 import { useSettings } from './useSettings'
 import { useAction } from './useAction'
 import { useToasts } from './useToasts'
 import { useAuthSession, useRefreshAuth } from './useAuth'
 
-const FIELDS = ['name', 'prompt', 'cron', 'timezone', 'status', 'model', 'owner_email', 'session_mode', 'env_from', 'profile', 'template'] as const
+const FIELDS = ['name', 'prompt', 'cron', 'timezone', 'status', 'model', 'owner_email', 'session_mode', 'services', 'profile', 'template'] as const
 export type Field = (typeof FIELDS)[number]
 
 export function useScheduleEditor() {
@@ -34,9 +34,10 @@ export function useScheduleEditor() {
     template: '',
     owner_email: id ? '' : (session.value?.user?.email ?? ''),
     session_mode: SessionMode.new,
-    env_from: [] as string[],
+    services: [] as string[],
   })
   const catalogs = useCatalogs()
+  const storedServices = ref<string[]>([])
   let originalSelection: { profile: string; template: string } | undefined
   for (const field of ['profile', 'template'] as const) {
     const source = field === 'profile' ? catalogs.profiles : catalogs.templates
@@ -49,13 +50,10 @@ export function useScheduleEditor() {
   }
   /** Server-side validation problems by field; the API names the field, the dictionary explains it. */
   const fieldErrors = reactive<Partial<Record<Field, string>>>({})
-  const settings = shallowRef<Settings | null>(null),
-    error = shallowRef<unknown>(null),
+  const error = shallowRef<unknown>(null),
     loading = ref(true)
   const times = ref<string[]>([]),
     previewBusy = ref(false)
-  const obsoleteNames = computed(() => form.env_from.filter((name) => !settings.value?.allowed_env_from.includes(name)))
-  const extraNames = computed(() => settings.value?.allowed_env_from.filter((name) => !settings.value?.base_env_from.includes(name)) ?? [])
   const controller = new AbortController()
   let previewController: AbortController | undefined
   let attempt: { key: string; body: string } | undefined
@@ -85,21 +83,18 @@ export function useScheduleEditor() {
         await router.replace('/schedules')
         return
       }
-      const [options, task] = await Promise.all([
-        get('/api/v1/schedules/settings', { signal: controller.signal }),
-        id ? get('/api/v1/schedules/{id}', { signal: controller.signal, path: { id } }) : undefined,
-      ])
+      const task = id ? await get('/api/v1/schedules/{id}', { signal: controller.signal, path: { id } }) : undefined
       if (controller.signal.aborted) return
       if (task && !task.can_edit) {
         push(t(task.deleted_at ? 'schedule.deleted' : !session.value?.write_access ? 'schedule.emailRequired' : 'schedule.forbidden'))
         await router.replace(`/schedules/${id}`)
         return
       }
-      settings.value = options
       canSave.value = true
       if (!id && !canManageAll.value) form.owner_email = session.value?.user?.email ?? ''
       if (task) {
         originalSelection = { profile: task.profile, template: task.template }
+        storedServices.value = [...task.services]
         Object.assign(form, {
           name: task.name,
           profile: task.profile,
@@ -111,7 +106,7 @@ export function useScheduleEditor() {
           model: task.model ?? '',
           owner_email: task.owner_email ?? '',
           session_mode: task.session_mode,
-          env_from: [...task.env_from],
+          services: [...task.services],
         })
       }
     } catch (cause) {
@@ -143,7 +138,7 @@ export function useScheduleEditor() {
     previewBusy.value = false
   }
   function payload(): CreateSchedule {
-    const body: CreateSchedule = { ...form, model: form.model.trim() || null, owner_email: form.owner_email.trim() || null, env_from: [...form.env_from] }
+    const body: CreateSchedule = { ...form, model: form.model.trim() || null, owner_email: form.owner_email.trim() || null, services: [...form.services].sort() }
     if (!canManageAll.value) {
       if (id) delete body.owner_email
       else body.owner_email = session.value?.user?.email
@@ -205,11 +200,9 @@ export function useScheduleEditor() {
     canManageAll,
     canSave,
     catalogs,
+    storedServices,
     form,
     fieldErrors,
-    settings,
-    extraNames,
-    obsoleteNames,
     error,
     loading,
     load,

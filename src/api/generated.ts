@@ -48,7 +48,7 @@ export type paths = {
         patch: operations["UpdateSchedule"];
         trace?: never;
     };
-    "/api/v1/schedules/profiles": {
+    "/api/v1/profiles": {
         parameters: {
             query?: never;
             header?: never;
@@ -65,7 +65,7 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/schedules/templates": {
+    "/api/v1/templates": {
         parameters: {
             query?: never;
             header?: never;
@@ -82,6 +82,26 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get available Orpheus services
+         * @description All services are available to every caller with read access. Returns ENV names, never values.
+         */
+        get: operations["GetServices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schedules/settings": {
         parameters: {
             query?: never;
@@ -89,7 +109,7 @@ export type paths = {
             path?: never;
             cookie?: never;
         };
-        /** Get allowed environment names */
+        /** Get schedule interface settings */
         get: operations["GetSettings"];
         put?: never;
         post?: never;
@@ -310,7 +330,18 @@ export type components = {
         Status: Status;
         /** @enum {string} */
         SessionMode: SessionMode;
-        EnvFrom: string[];
+        /** @description Explicit selection of service codes. No defaults; empty clears the selection. Unknown codes return 422 and an unavailable catalog returns 503. Unchanged selections can be preserved without the catalog; resuming validates the full selection. */
+        ServiceCodes: string[];
+        Service: {
+            code: string;
+            name: string;
+            description: string;
+            /** @description Names of worker environment variables included in this service; never values. */
+            env_from: string[];
+        };
+        Services: {
+            items: components["schemas"]["Service"][];
+        };
         Profile: {
             name: string;
             description: string | null;
@@ -355,7 +386,7 @@ export type components = {
             session_mode?: components["schemas"]["SessionMode"];
             /** @description SAML non-admins must use their session email; omission fills it, explicit null is forbidden. Full-access callers may use any owner or null. */
             owner_email?: string | null;
-            env_from?: components["schemas"]["EnvFrom"];
+            services?: components["schemas"]["ServiceCodes"];
         };
         UpdateSchedule: {
             /** @description Exact Orpheus profile name; omitted keeps the stored choice; a change starts a new reusable session. */
@@ -370,7 +401,7 @@ export type components = {
             model?: string | null;
             session_mode?: components["schemas"]["SessionMode"];
             owner_email?: string | null;
-            env_from?: components["schemas"]["EnvFrom"];
+            services?: components["schemas"]["ServiceCodes"];
         };
         Schedule: {
             /** @description Whether this caller may modify the current schedule. False for deleted schedules. Computed from current ownership even on an idempotent creation replay; busy state can still prevent session reset. */
@@ -392,7 +423,7 @@ export type components = {
             model: string | null;
             session_mode: components["schemas"]["SessionMode"];
             owner_email: string | null;
-            env_from: components["schemas"]["EnvFrom"];
+            services: components["schemas"]["ServiceCodes"];
             /** Format: uuid */
             id: string;
             /** Format: date-time */
@@ -410,8 +441,6 @@ export type components = {
             next_cursor: string | null;
         };
         Settings: {
-            base_env_from: components["schemas"]["EnvFrom"];
-            allowed_env_from: components["schemas"]["EnvFrom"];
             /** @enum {string} */
             browser_auth: SettingsBrowser_auth;
         };
@@ -554,7 +583,9 @@ export type components = {
     pathItems: never;
 };
 export type Problem = components['schemas']['Problem'];
-export type EnvFrom = components['schemas']['EnvFrom'];
+export type ServiceCodes = components['schemas']['ServiceCodes'];
+export type Service = components['schemas']['Service'];
+export type Services = components['schemas']['Services'];
 export type Profile = components['schemas']['Profile'];
 export type CodexProfile = components['schemas']['CodexProfile'];
 export type Profiles = components['schemas']['Profiles'];
@@ -749,6 +780,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Templates"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    GetServices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Services"];
                 };
             };
             default: components["responses"]["Problem"];

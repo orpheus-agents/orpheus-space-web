@@ -1,4 +1,4 @@
-import { ProfileHarness, type Profiles, type Templates, SessionMode, Status, OccurrenceState, type Schedule, type Occurrence } from '../api/generated'
+import { ProfileHarness, type Profiles, type Templates, type Services, SessionMode, Status, OccurrenceState, type Schedule, type Occurrence } from '../api/generated'
 export const taskID = '11111111-1111-4111-8111-111111111111'
 export const occurrenceID = '22222222-2222-4222-8222-222222222222'
 export const timestamp = '2026-10-01T10:00:00Z'
@@ -17,7 +17,7 @@ export function schedule(overrides: Partial<Schedule> = {}): Schedule {
     template: 'fixture',
     session_mode: SessionMode.reuse,
     owner_email: 'alice@example.com',
-    env_from: ['B'],
+    services: ['gitlab'],
     created_at: timestamp,
     updated_at: timestamp,
     next_run_at: timestamp,
@@ -59,5 +59,12 @@ export function templates(): Templates {
   return { items: [
     { name: 'fixture', description: 'Standard tools', is_default: true },
     { name: 'reports:v2', description: 'Tools for reports', is_default: false },
+  ] }
+}
+
+export function services(): Services {
+  return { items: [
+    { code: 'gitlab', name: 'GitLab', description: 'Work with repositories and merge requests', env_from: ['GITLAB_HOST', 'GITLAB_TOKEN'] },
+    { code: 'orpheus-space', name: 'Orpheus Space', description: 'Manage scheduled tasks', env_from: ['ORPHEUS_SPACE_HOST', 'ORPHEUS_SPACE_API_KEY'] },
   ] }
 }

@@ -58,6 +58,7 @@ export const ERROR_CODES = [
   'validation_error',
   'unknown_profile',
   'unknown_template',
+  'unknown_service',
   'capacity_exhausted',
   'session_busy',
   'idempotency_conflict',

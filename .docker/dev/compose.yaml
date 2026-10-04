@@ -18,14 +18,14 @@ services:
       timeout: 2s
       retries: 30
   core-migrate:
-    image: retailcrm/orpheus:0.5.0
+    image: retailcrm/orpheus:0.6.0
     command: [migrate, up]
     environment:
       DATABASE_URL: postgres://orpheus:fixture-password@core-db:5432/orpheus
     depends_on:
       core-db: {condition: service_healthy}
   core:
-    image: retailcrm/orpheus:0.5.0
+    image: retailcrm/orpheus:0.6.0
     environment:
       DATABASE_URL: postgres://orpheus:fixture-password@core-db:5432/orpheus
       PUBLIC_API_KEYS: '["fixture-core-key"]'
@@ -68,7 +68,6 @@ services:
       ORPHEUS_API_KEY: fixture-core-key
       ORPHEUS_BROWSER_AUTH: anonymous
       ORPHEUS_PUBLIC_URL: ${ORPHEUS_PUBLIC_URL:?Use npm run stack:start}
-      HARNESS_ENV_ALLOWLIST: '["A","B"]'
     volumes: [./space.toml:/etc/orpheus/config.toml:ro]
     healthcheck:
       interval: 2s

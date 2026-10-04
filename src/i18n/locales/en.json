@@ -100,15 +100,11 @@
     "previewZone": "Times in {zone}",
     "execution": "Execution",
     "sessionMode": "Session",
-    "sessionHint": "Reuse keeps conversation context. Changing the profile, template, model or ENV starts a new session.",
-    "baseEnv": "Base ENV names (automatic)",
-    "extraEnv": "Additional ENV names",
-    "envHint": "Select names allowed by the server. Values are supplied by the core worker.",
+    "sessionHint": "Reuse keeps conversation context. Changing the profile, template, model or services starts a new session.",
     "reset": "Reset context",
     "resetConfirm": "The next run will start a new session. Existing sessions will be kept.",
     "deleteConfirm": "Delete this schedule? An already accepted run will continue.",
     "deleted": "This schedule has been deleted. Its history is retained.",
-    "obsoleteEnv": "These names are no longer allowed. Uncheck them before saving.",
     "profile": "Profile",
     "template": "Sandbox template",
     "forbidden": "You can only change your own schedules. Your access may have changed.",
@@ -150,10 +146,10 @@
     "cron": "Check the cron expression: five fields, minute, hour, day, month, weekday.",
     "timezone": "Unknown time zone.",
     "owner_email": "Enter a valid email address or leave the field empty.",
-    "env_from": "One of the names is not allowed by the server.",
     "model": "Check the model name.",
     "profile": "Choose an available profile.",
-    "template": "Choose an available sandbox template."
+    "template": "Choose an available sandbox template.",
+    "services": "Choose available services or remove unavailable ones."
   },
   "status": {
     "active": "Active",
@@ -198,7 +194,8 @@
     "multiple_runs_not_allowed": "The session does not allow parallel runs.",
     "request_too_large": "The request to the core was too large.",
     "unknown_profile": "The selected profile is no longer available in Orpheus.",
-    "unknown_template": "The selected sandbox template is no longer available in Orpheus."
+    "unknown_template": "The selected sandbox template is no longer available in Orpheus.",
+    "unknown_service": "A selected service is no longer available. Update the schedule’s services."
   },
   "history": {
     "title": "Run history",
@@ -234,5 +231,16 @@
     "unavailable": "Could not load the choices. Try again later.",
     "loading": "Loading choices…",
     "chooseHint": "No default is available. Choose an option."
+  },
+  "services": {
+    "title": "Services",
+    "hint": "Select the services this schedule needs. Nothing is selected automatically.",
+    "env": "ENV variables",
+    "envFor": "ENV variables for {name}",
+    "missing": "Unavailable service",
+    "emptyCatalog": "No services configured",
+    "emptySelection": "No services selected",
+    "resumeOffline": "Cannot check services while Orpheus is unavailable. Try resuming later.",
+    "resumeInvalid": "A selected service is unavailable. Edit the schedule’s services before resuming."
   }
 }

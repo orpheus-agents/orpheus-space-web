@@ -7,6 +7,7 @@ import { formatOffset, timeZones } from '../composables/useSettings'
 import { formatDate } from '../format'
 import type { useScheduleEditor } from '../composables/useScheduleEditor'
 import CatalogField from './CatalogField.vue'
+import ServicesField from './ServicesField.vue'
 import CronBuilder from './CronBuilder.vue'
 import FieldError from './FieldError.vue'
 import HeaderMenu from './HeaderMenu.vue'
@@ -96,22 +97,7 @@ function changeZone(value: string) {
         <option v-for="mode in Object.values(SessionMode)" :key="mode" :value="mode">{{ t(`sessionMode.${mode}`) }}</option>
       </select></label>
       <p class="text-sm text-muted">{{ t('schedule.sessionHint') }}</p>
-      <div>
-        <h3 class="caps mb-2 text-muted">{{ t('schedule.baseEnv') }}</h3>
-        <p class="font-mono text-sm">{{ editor.settings.value?.base_env_from.join(', ') || t('common.none') }}</p>
-      </div>
-      <div v-if="editor.obsoleteNames.value.length" class="border border-line p-4">
-        <p class="mb-3 text-sm text-danger-ink">{{ t('schedule.obsoleteEnv') }}</p>
-        <label v-for="name in editor.obsoleteNames.value" :key="name" class="mr-5 inline-flex items-center gap-2 font-mono text-sm"><input v-model="form.env_from" type="checkbox" :value="name">{{ name }}</label>
-      </div>
-      <fieldset v-if="editor.extraNames.value.length">
-        <legend class="caps mb-3 text-muted">{{ t('schedule.extraEnv') }}</legend>
-        <p class="mb-3 text-sm text-muted">{{ t('schedule.envHint') }}</p>
-        <div class="flex flex-wrap gap-x-6 gap-y-3">
-          <label v-for="name in editor.extraNames.value" :key="name" class="flex items-center gap-2 font-mono text-sm"><input v-model="form.env_from" type="checkbox" :value="name">{{ name }}</label>
-        </div>
-      </fieldset>
-      <FieldError :message="fieldErrors.env_from" />
+      <ServicesField v-model="form.services" :stored-codes="editor.storedServices.value" :items="editor.catalogs.services.data.value?.items ?? null" :unavailable="editor.catalogs.services.disconnected.value" :error="fieldErrors.services" />
     </section>
     <div class="flex flex-wrap gap-3">
       <button class="button-primary" type="submit" :disabled="editor.busy.value || !editor.canSave.value">{{ t('common.save') }}</button>
