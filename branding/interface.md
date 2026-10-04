@@ -58,12 +58,20 @@ Fonts are in `fonts/`; body text uses the system sans and loads nothing.
 - Tables: header row, 44 px rows, 1 px rules, selected row on `bg-subtle`,
   no zebra stripes.
 - Panels: `bg-raised` with a 1 px `line` border, 20 px padding.
+- Detail cards: every fact is one labelled row. A set of names (services) is a
+  row of plain text separated by commas, not a card per item. A name with more
+  to say has a dotted underline and shows its description and details on hover,
+  focus or tap. An empty set is a word in the row; the dithered empty state is
+  for empty pages and lists.
 - Buttons: 40 px tall, square. Primary is `ink` with `bg` text; secondary is
   a 1 px `ink` border.
 - Forms: a schedule's repeat rule is a plain choice (every day, weekdays, chosen
   days, monthly, every few hours or minutes) with a sentence under it; the raw
   cron appears in the sentence’s title on hover and is editable in the last option.
-  Lists and detail cards use the same sentence in the regular body font. Validation from
+  Lists and detail cards use the same sentence in the regular body font. A choice
+  of several options (services) is a checklist, one row per option: checkbox,
+  name, description, in two columns on wide screens; details of the selection sit
+  in one collapsed disclosure under the list. Validation from
   the API is a `danger-ink` line under its field, not only a toast. Place form
   actions below the fields, aligned left: Save first, then Cancel.
 

@@ -77,11 +77,11 @@ const templateDescription = computed(() => catalogs.templates.data.value?.items.
           <dt class="caps mb-2 text-muted">{{ t('schedule.sessionMode') }}</dt>
           <dd>{{ t(`sessionMode.${data.session_mode}`) }}</dd>
         </div>
+        <div class="col-span-full">
+          <dt class="caps mb-2 text-muted">{{ t('services.title') }}</dt>
+          <dd><SelectedServices :codes="data.services" :items="catalogs.services.data.value?.items ?? null" :unavailable="catalogs.services.disconnected.value" /></dd>
+        </div>
       </dl>
-      <section class="mb-6" :aria-label="t('services.title')">
-        <h2 class="caps mb-3 text-muted">{{ t('services.title') }}</h2>
-        <SelectedServices :codes="data.services" :items="catalogs.services.data.value?.items ?? null" :unavailable="catalogs.services.disconnected.value" />
-      </section>
       <h2 class="caps mb-3 text-muted">{{ t('schedule.prompt') }}</h2>
       <RichText :text="data.prompt" />
     </section>
