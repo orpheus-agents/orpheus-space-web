@@ -134,8 +134,10 @@ access handling. Opening an editor or receiving `schedule_forbidden` refreshes
 session permissions without reloading the page. If an administrator loses full
 access while creating a schedule, the draft is kept and its owner switches to
 the current user. The server enforces every restriction independently of the UI.
-Service choices show a name, description and expandable ENV names. Schedule
-cards show the same details. Values are never displayed. No services are selected
+Service choices are a checklist of names and descriptions; one disclosure under
+it lists the ENV names of the selection. Schedule cards list the selected
+services by name in one row, and a name shows its description and ENV names on
+hover or keyboard focus. Values are never displayed. No services are selected
 by default. Missing or unavailable selections remain visible by code and can be
 removed or preserved. Root `/api/v1/services`, `/api/v1/profiles` and
 `/api/v1/templates` supply the catalogs. The schedule settings endpoint is not

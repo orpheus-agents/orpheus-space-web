@@ -90,7 +90,7 @@ test('real catalogs, nginx and Space support browser CRUD and offline edits', as
     await page.getByRole('checkbox', { name: 'gitlab', exact: true }).check()
     await page.getByRole('checkbox', { name: 'gitlab', exact: true }).uncheck()
     await page.getByRole('button', { name: 'Save', exact: true }).click()
-    await expect(page.getByText('No services selected')).toBeVisible()
+    await expect(page.locator('dl > div').filter({ has: page.locator('dt', { hasText: 'Services' }) }).locator('dd')).toHaveText('Not selected')
     await page.getByRole('button', { name: 'Resume', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Pause', exact: true }).click()
@@ -155,7 +155,7 @@ test('real SAML separates admin, owner and another user while Bearer retains ful
     expect((await (await alice.request.get(apiPath)).json()).services).toEqual(['orpheus-space'])
     const headers = { Origin: baseURL!, 'X-Orpheus-CSRF': '1' }
     await bob.goto(path)
-    await expect(bob.getByRole('region', { name: 'Services', exact: true })).toContainText('Orpheus Space')
+    await expect(bob.locator('dl > div').filter({ has: bob.locator('dt', { hasText: 'Services' }) }).getByRole('listitem')).toHaveText(['Orpheus Space'])
     await expect(bob.getByRole('link', { name: 'Edit schedule' })).toHaveCount(0)
     await expect(bob.getByText('This schedule is available for viewing only.')).toBeVisible()
     await bob.goto(`${path}/edit`)

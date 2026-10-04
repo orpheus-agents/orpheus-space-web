@@ -236,10 +236,11 @@
     "title": "Services",
     "hint": "Select the services this schedule needs. Nothing is selected automatically.",
     "env": "ENV variables",
-    "envFor": "ENV variables for {name}",
+    "selectedEnv": "ENV variables of the selected services",
     "missing": "Unavailable service",
+    "missingCode": "{code} (unavailable)",
     "emptyCatalog": "No services configured",
-    "emptySelection": "No services selected",
+    "emptySelection": "Not selected",
     "resumeOffline": "Cannot check services while Orpheus is unavailable. Try resuming later.",
     "resumeInvalid": "A selected service is unavailable. Edit the schedule’s services before resuming."
   }

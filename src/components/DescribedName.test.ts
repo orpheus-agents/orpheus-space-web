@@ -29,6 +29,19 @@ it('shows escaped descriptions on focus, dismisses on Escape', async () => {
   expect(document.querySelector('[role=tooltip]')).toBeNull()
 })
 
+it('adds slotted details under the description and none without a description', async () => {
+  wrapper = mount(DescribedName, { props: { name: 'GitLab', description: 'Repositories\nand pipelines' }, slots: { default: '<ul><li>GITLAB_TOKEN</li></ul>' }, attachTo: document.body })
+  expect(wrapper.text()).toBe('GitLab')
+  expect(document.body.textContent).not.toContain('GITLAB_TOKEN')
+  await wrapper.get('button').trigger('focus')
+  await flushPromises()
+  const tooltip = document.querySelector('[role=tooltip]')!
+  expect(tooltip.querySelector('p')!.textContent).toBe('Repositories\nand pipelines')
+  expect(tooltip.querySelector('p + ul li')!.textContent).toBe('GITLAB_TOKEN')
+  await wrapper.setProps({ description: null })
+  expect(document.body.textContent).not.toContain('GITLAB_TOKEN')
+})
+
 it('allows hovering the tooltip, hides after leaving and cleans up on unmount', async () => {
   vi.useFakeTimers()
   wrapper = mount(DescribedName, { props: { name: 'codex', description: 'Development tools' }, attachTo: document.body })

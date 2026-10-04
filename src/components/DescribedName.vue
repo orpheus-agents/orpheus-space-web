@@ -70,16 +70,18 @@ onUnmounted(hide)
       {{ name }}
     </button>
     <Teleport to="body">
-      <span
+      <div
         v-if="visible"
         :id="id"
         ref="tooltip"
         role="tooltip"
-        class="fixed z-50 max-h-64 w-max max-w-[min(20rem,calc(100vw-1rem))] overflow-y-auto whitespace-pre-line break-words border border-line bg-surface-raised px-3 py-2 font-sans text-sm font-normal leading-5 text-ink"
+        class="fixed z-50 max-h-64 w-max max-w-[min(24rem,calc(100vw-1rem))] overflow-y-auto border border-line bg-surface-raised px-3 py-2 font-sans text-sm font-normal leading-5 text-ink"
         :style="position"
         @mouseenter="cancelHide"
         @mouseleave="leave"
-      >{{ description }}</span>
+      >
+        <p class="whitespace-pre-line break-words">{{ description }}</p><slot />
+      </div>
     </Teleport>
   </template>
 </template>
