@@ -13,7 +13,7 @@ Shared agent schedules for [Orpheus Space](https://github.com/orpheus-agents/orp
 Vue 3, TypeScript, Vite, Tailwind CSS and Vue Router; English/Russian and light/dark themes.
 
 Create and edit schedules, pause/resume, filter by multiple owner emails or unowned
-schedules, choose profiles, sandbox templates and allowed ENV names and reset reusable context. The list shows each
+schedules, choose profiles, sandbox templates and services and reset reusable context. The list shows each
 schedule's last run; validation problems from the API appear under their fields.
 All users with Space access can read all schedules and their history/results.
 SAML administrators configured in Space can manage every schedule; other users
@@ -52,7 +52,7 @@ npm run stack:start
 ```
 
 The disposable stack builds the pinned Space commit, migrates an isolated Postgres
-and serves the production nginx frontend. Orpheus v0.5.0 provides real profile and
+and serves the production nginx frontend. Orpheus v0.6.0 provides real profile and
 template catalogs, using a separate disposable database. No workers, AgentBox
 or model credentials are needed. Fixtures contain public test keys only. `npm run stack:stop`
 stops the stack and discards its temporary database.
@@ -134,9 +134,13 @@ access handling. Opening an editor or receiving `schedule_forbidden` refreshes
 session permissions without reloading the page. If an administrator loses full
 access while creating a schedule, the draft is kept and its owner switches to
 the current user. The server enforces every restriction independently of the UI.
-Additional ENV choices are hidden when the allowlist has no names beyond the
-base list. Previously selected names that are no longer allowed remain visible
-so the user can remove them.
+Service choices show a name, description and expandable ENV names. Schedule
+cards show the same details. Values are never displayed. No services are selected
+by default. Missing or unavailable selections remain visible by code and can be
+removed or preserved. Root `/api/v1/services`, `/api/v1/profiles` and
+`/api/v1/templates` supply the catalogs. The schedule settings endpoint is not
+needed by the editor. Resuming with invalid services or an unavailable core
+produces an explanatory notification.
 
 ## Checks and releases
 
