@@ -16,6 +16,7 @@ Read [README.md](README.md).
 * If the frontend and backend disagree on the API contract, fix the source of the mismatch in the specification, generation or backend, along with the corresponding tests. Do not add frontend normalization, fallbacks or defensive compatibility for incorrect responses from a backend we control.
 
 ### Documentation
+* Write documentation in English.
 * Review and update documentation to reflect the current code.
 
 ### Frontend
