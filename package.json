@@ -1,6 +1,7 @@
 {
   "name": "orpheus-space-web",
   "private": true,
+  "license": "AGPL-3.0-only",
   "version": "0.4.1",
   "type": "module",
   "scripts": {

@@ -167,3 +167,8 @@ browser input, and are absent from the static nginx runtime. Production dependen
 are audited separately without exceptions. New advisories, other dependency paths
 and expired exceptions still fail the audit. Remove the exception when a fixed
 dependency is available or Tailwind is upgraded.
+
+## License
+
+Licensed under the GNU Affero General Public License, version 3 only
+(`AGPL-3.0-only`). See [LICENSE](LICENSE).
