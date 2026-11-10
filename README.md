@@ -159,14 +159,15 @@ CI runs all checks before publishing a `v*.*.*` tag to
 `retailcrm/orpheus-space-web` for linux/amd64 and linux/arm64. Publishing uses
 `vars.DOCKERHUB_USERNAME` and `secrets.DOCKERHUB_TOKEN`.
 
-The audit temporarily allows [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
-only on the three Tailwind 3 dependency paths listed in `audit-ci.json`, until
-2026-11-03. The affected `braces` package has no patched release. These build tools
-receive checked-in glob patterns from `tailwind.config.ts`, not schedule text or
-browser input, and are absent from the static nginx runtime. Production dependencies
-are audited separately without exceptions. New advisories, other dependency paths
-and expired exceptions still fail the audit. Remove the exception when a fixed
-dependency is available or Tailwind is upgraded.
+The audit checks production and development dependencies without advisory exceptions.
+
+## Dependency type checking
+
+Application code remains strictly type-checked. `skipLibCheck` avoids checking
+third-party declarations because the patched vue-i18n 11.4 release imports
+Vue 3.6's `GenericComponentInstance` while supporting stable Vue 3.5 at runtime
+([upstream issue](https://github.com/intlify/vue-i18n/issues/2335)). Remove this
+option once the upstream declarations support the installed stable Vue version.
 
 ## License
 
