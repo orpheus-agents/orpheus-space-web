@@ -6,6 +6,7 @@ import { useSchedule } from '../composables/useSchedule'
 import { useSettings } from '../composables/useSettings'
 import { formatDate } from '../format'
 import { useCatalogs } from '../composables/useCatalogs'
+import { useTemplate } from '../composables/useTemplates'
 import CronDescription from '../components/CronDescription.vue'
 import DescribedName from '../components/DescribedName.vue'
 import PageState from '../components/PageState.vue'
@@ -19,14 +20,17 @@ const { timeZone } = useSettings()
 const catalogs = useCatalogs()
 const { data, error, pending, updatedAt, disconnected, refresh, toggle, busy, confirm, execute } = useSchedule()
 const profileDescription = computed(() => catalogs.profiles.data.value?.items.find((item) => item.name === data.value?.profile)?.description)
-const templateDescription = computed(() => catalogs.templates.data.value?.items.find((item) => item.name === data.value?.template)?.description)
+const template = useTemplate(() => data.value?.template ?? '')
 </script>
 <template>
   <PageState v-if="!data" :loading="pending" :error="error" @retry="refresh" />
   <template v-else>
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
       <h1 class="section-title break-words">{{ data.name }}</h1>
-      <RefreshStatus :updated-at="updatedAt" :disconnected="disconnected || catalogs.disconnected.value" :pending="pending || catalogs.pending.value" @refresh="refresh(); catalogs.refresh()" />
+      <RefreshStatus
+        :updated-at="updatedAt" :disconnected="disconnected || catalogs.disconnected.value || template.disconnected.value"
+        :pending="pending || catalogs.pending.value || template.pending.value" @refresh="refresh(); catalogs.refresh(); template.refresh()"
+      />
     </div>
     <div v-if="data.can_edit" class="mb-6 flex flex-wrap gap-3">
       <RouterLink class="button-primary" :to="`/schedules/${data.id}/edit`">{{ t('schedule.edit') }}</RouterLink>
@@ -67,7 +71,7 @@ const templateDescription = computed(() => catalogs.templates.data.value?.items.
         </div>
         <div>
           <dt class="caps mb-2 text-muted">{{ t('schedule.template') }}</dt>
-          <dd class="break-words"><DescribedName :name="data.template" :description="templateDescription" /></dd>
+          <dd class="break-words"><DescribedName :name="data.template" :description="template.template.value?.description" /></dd>
         </div>
         <div>
           <dt class="caps mb-2 text-muted">{{ t('schedule.model') }}</dt>

@@ -16,7 +16,8 @@ for (const view of ['card', 'list'] as const) {
   describe(`${view} resume`, () => {
     it.each([
       { status: 422, error: { code: 'validation_error', details: [{ path: ['body', 'services'], code: 'unknown_service' }] }, message: 'A selected service is unavailable. Edit the schedule’s services before resuming.' },
-      { status: 503, error: { code: 'core_unavailable' }, message: 'Cannot check services while Orpheus is unavailable. Try resuming later.' },
+      { status: 422, error: { code: 'validation_error', details: [{ path: ['body', 'template'], code: 'template_inactive' }, { path: ['body', 'services'], code: 'unknown_service' }] }, message: 'The schedule’s template is inactive or no longer registered. Choose an active template before resuming.' },
+      { status: 503, error: { code: 'core_unavailable' }, message: 'Cannot check the template and services while Orpheus is unavailable. Try resuming later.' },
       { status: 422, error: { code: 'validation_error', details: [{ path: ['body', 'status'], code: 'invalid' }] }, message: 'Could not load data' },
       { status: 503, error: { code: 'unavailable' }, message: 'Could not load data' },
     ])('explains $status $error.code without changing the stored status', async ({ status, error, message }) => {

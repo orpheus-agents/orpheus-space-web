@@ -2,7 +2,11 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch, type Component } from 'vue'
 import { Check, ChevronDown } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
-/** An icon menu in the header, or a form field showing `text` when it is given. */
+/**
+ * An icon menu in the header, or a form field showing `text` when it is given.
+ * A `remote` menu leaves filtering to its owner: it emits `search` and `end` (scrolled to the bottom)
+ * and shows the owner's `footer` (loading, errors, more) under the options.
+ */
 const props = defineProps<{
   label: string
   icon: Component
@@ -14,8 +18,9 @@ const props = defineProps<{
   searchable?: boolean
   text?: string
   fieldId?: string
+  remote?: boolean
 }>()
-const emit = defineEmits<{ 'update:modelValue': [value: T] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: T]; search: [query: string]; end: [] }>()
 const { t } = useI18n()
 const id = useId()
 const root = ref<HTMLElement>()
@@ -27,8 +32,13 @@ const query = ref('')
 const normalize = (value: string) => value.toLowerCase().replace(/[\s/_]+/g, ' ')
 const shown = computed(() => {
   const needle = normalize(query.value.trim())
-  return needle ? props.options.filter((option) => normalize(`${option.label} ${option.description ?? ''}`).includes(needle)) : props.options
+  return needle && !props.remote ? props.options.filter((option) => normalize(`${option.label} ${option.description ?? ''}`).includes(needle)) : props.options
 })
+watch(query, (value) => { if (props.remote) emit('search', value) })
+function onScroll(event: Event) {
+  const element = event.target as HTMLElement
+  if (element.scrollHeight - element.scrollTop - element.clientHeight < 32) emit('end')
+}
 const items = () => [...(list.value?.querySelectorAll<HTMLElement>('[role=option]:not(:disabled)') ?? [])]
 async function show() {
   open.value = true
@@ -60,7 +70,16 @@ function onKeydown(event: KeyboardEvent) {
   event.preventDefault()
 }
 function onFocusout(event: FocusEvent) {
-  if (!root.value?.contains(event.relatedTarget as Node | null)) open.value = false
+  if (root.value?.contains(event.relatedTarget as Node | null)) return
+  // A focused control can be removed (the load-more button after the last page): that is not an outside
+  // interaction. Keep the menu open and return focus to the search box instead of dropping it on the page.
+  // Focus landing on nothing (body) means no outside control took it: the focused node was removed, or the
+  // browser dropped focus after a re-render. That is not a dismissal — return focus and keep the menu open.
+  if (event.relatedTarget === null) {
+    ;(search.value ?? items().at(-1) ?? trigger.value)?.focus()
+    return
+  }
+  open.value = false
 }
 function onDocumentClick(event: MouseEvent) {
   if (!root.value?.contains(event.target as Node)) open.value = false
@@ -100,24 +119,27 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
         :aria-label="t('settings.search')"
         :aria-controls="`${id}-list`"
       >
-      <div :id="`${id}-list`" ref="list" role="listbox" :aria-label="label" class="max-h-72 overflow-y-auto">
-        <button
-          v-for="option in shown"
-          :key="option.value"
-          type="button"
-          role="option"
-          tabindex="-1"
-          :aria-selected="option.value === modelValue"
-          :disabled="option.disabled"
-          class="flex w-full items-center justify-between gap-4 px-3 py-2 text-left text-sm hover:bg-surface-subtle focus-visible:bg-surface-subtle"
-          @click="choose(option.value)"
-        >
-          <span class="min-w-0">
-            <span class="block break-words">{{ option.label }}<span v-if="option.note" class="ml-2 text-xs text-muted">{{ option.note }}</span></span>
-            <span v-if="option.description" class="mt-1 block whitespace-pre-line break-words text-xs text-muted">{{ option.description }}</span>
-          </span><Check v-if="option.value === modelValue" class="h-4 w-4 shrink-0" aria-hidden="true" />
-        </button>
-        <p v-if="!shown.length" class="px-3 py-3 text-sm text-muted">{{ t('settings.nothingFound') }}</p>
+      <div class="max-h-72 overflow-y-auto" @scroll="onScroll">
+        <div :id="`${id}-list`" ref="list" role="listbox" :aria-label="label">
+          <button
+            v-for="option in shown"
+            :key="option.value"
+            type="button"
+            role="option"
+            tabindex="-1"
+            :aria-selected="option.value === modelValue"
+            :disabled="option.disabled"
+            class="flex w-full items-center justify-between gap-4 px-3 py-2 text-left text-sm hover:bg-surface-subtle focus-visible:bg-surface-subtle"
+            @click="choose(option.value)"
+          >
+            <span class="min-w-0">
+              <span class="block break-words">{{ option.label }}<span v-if="option.note" class="ml-2 text-xs text-muted">{{ option.note }}</span></span>
+              <span v-if="option.description" class="mt-1 block whitespace-pre-line break-words text-xs text-muted">{{ option.description }}</span>
+            </span><Check v-if="option.value === modelValue" class="h-4 w-4 shrink-0" aria-hidden="true" />
+          </button>
+        </div>
+        <p v-if="!shown.length && !remote" class="px-3 py-3 text-sm text-muted">{{ t('settings.nothingFound') }}</p>
+        <slot name="footer" />
       </div>
     </div>
   </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, useId } from 'vue'
-import { Box, Clock3, UserRound } from 'lucide-vue-next'
+import { Clock3, UserRound } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { SessionMode, Status } from '../api/generated'
 import { formatOffset, timeZones } from '../composables/useSettings'
@@ -8,6 +8,7 @@ import { formatDate } from '../format'
 import type { useScheduleEditor } from '../composables/useScheduleEditor'
 import CatalogField from './CatalogField.vue'
 import ServicesField from './ServicesField.vue'
+import TemplateField from './TemplateField.vue'
 import CronBuilder from './CronBuilder.vue'
 import FieldError from './FieldError.vue'
 import HeaderMenu from './HeaderMenu.vue'
@@ -91,7 +92,10 @@ function changeZone(value: string) {
             <p :id="modelHintId" class="mt-2 text-xs text-muted">{{ t('schedule.modelHint') }}</p>
           </div>
         </div>
-        <CatalogField v-model="form.template" :label="t('schedule.template')" :icon="Box" :items="editor.catalogs.templates.data.value?.items ?? null" :unavailable="editor.catalogs.templates.disconnected.value" :error="fieldErrors.template" />
+        <TemplateField
+          v-model="form.template" :current="editor.template.current.value" :state="editor.template.state.value"
+          :resolving-default="editor.template.resolvingDefault.value" :options="editor.template.options" :error="fieldErrors.template"
+        />
       </div>
       <label class="block max-w-md"><span class="mb-2 block caps text-muted">{{ t('schedule.sessionMode') }}</span><select v-model="form.session_mode" class="field w-full">
         <option v-for="mode in Object.values(SessionMode)" :key="mode" :value="mode">{{ t(`sessionMode.${mode}`) }}</option>

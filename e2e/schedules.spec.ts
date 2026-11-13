@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { profiles, templates, services, schedule, occurrence, taskID, occurrenceID, timestamp } from '../src/test/fixtures'
+import { profiles, settings, template, templatePage, services, schedule, occurrence, taskID, occurrenceID, timestamp } from '../src/test/fixtures'
 
 test('new schedule uses the signed-in email and handles an empty service catalog', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
@@ -10,7 +10,8 @@ test('new schedule uses the signed-in email and handles an empty service catalog
       user: { subject: 'operator', display_name: 'Operator', email: 'operator@example.com' }, expires_at: timestamp,
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
-    if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
+    if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings() })
+    if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(route.request().url()) })
     if (path.endsWith('/services')) return route.fulfill({ json: { items: [] } })
     return route.fulfill({ json: schedule() })
   })
@@ -41,7 +42,8 @@ test('list, editing, history and automatic result work in both themes', async ({
         json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null },
       })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
-    if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
+    if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings() })
+    if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(route.request().url()) })
     if (path.endsWith('/services')) return route.fulfill({ json: services() })
     if (path.endsWith('/preview'))
       return route.fulfill({
@@ -165,7 +167,8 @@ test('schedule prompts render Markdown and front matter while preserving the edi
       mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null,
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
-    if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
+    if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings() })
+    if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(route.request().url()) })
     if (path.endsWith('/services')) return route.fulfill({ json: services() })
     if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [], next_cursor: null } })
     if (route.request().method() === 'PATCH') task = { ...task, ...route.request().postDataJSON() }
@@ -252,7 +255,8 @@ test('readable schedules, aligned list data and clickable history rows', async (
       mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null,
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
-    if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
+    if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings() })
+    if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(route.request().url()) })
     if (path.endsWith('/services')) return route.fulfill({ json: services() })
     if (path.endsWith('/result')) return route.fulfill({ json: {
       run_status: 'completed', fetched_at: timestamp,
@@ -301,15 +305,21 @@ test('readable schedules, aligned list data and clickable history rows', async (
 })
 
 test('catalog choices support descriptions, keyboard search and preserved offline editing', async ({ page }) => {
-  let task = schedule(), offline = false, removed = false
+  let task = schedule(), offline = false, templatesOffline = false, removed = false, retired = false
   const patches: Record<string, unknown>[] = []
   await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname
     if (path.endsWith('/auth/session')) return route.fulfill({ json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null } })
-    if (path.endsWith('/profiles') || path.endsWith('/templates')) {
+    if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings() })
+    if (path.endsWith('/templates')) {
+      if (templatesOffline) return route.fulfill({ status: 503, json: { error: { code: 'core_unavailable' } } })
+      const items = [template(), template({ id: '44444444-4444-4444-8444-444444444444', name: 'reports:v2', description: 'Tools for reports', active: !retired })]
+      return route.fulfill({ json: templatePage(route.request().url(), items) })
+    }
+    if (path.endsWith('/profiles')) {
       if (offline) return route.fulfill({ status: 503, json: { error: { code: 'core_unavailable' } } })
-      const data = path.endsWith('/profiles') ? profiles() : templates()
+      const data = profiles()
       if (removed) data.items = data.items.filter((item) => item.is_default)
       return route.fulfill({ json: data })
     }
@@ -326,6 +336,7 @@ test('catalog choices support descriptions, keyboard search and preserved offlin
   await page.clock.install()
   await page.goto('/schedules/new')
   await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('default')
+  await expect(page.getByRole('button', { name: 'Sandbox template', exact: true })).toHaveText('fixture')
   await page.getByLabel('Name', { exact: true }).fill('Selected execution')
   await page.getByRole('textbox', { name: 'Prompt', exact: true }).fill('Do the work')
   await expect(page.getByLabel('Model (optional)', { exact: true })).toHaveAttribute('placeholder', 'From the profile: default-model')
@@ -356,17 +367,36 @@ test('catalog choices support descriptions, keyboard search and preserved offlin
   await expect(page.getByRole('tooltip')).toHaveText('Search and compare sources')
   await page.keyboard.press('Escape')
   await expect(page.getByRole('tooltip')).toHaveCount(0)
+  await page.getByRole('button', { name: 'reports:v2', exact: true }).focus()
+  await expect(page.getByRole('tooltip')).toHaveText('Tools for reports')
+  await page.keyboard.press('Escape')
   removed = true
+  retired = true
   await page.getByRole('link', { name: 'Edit schedule' }).click()
-  await expect(page.getByText('This option is no longer available.', { exact: false })).toHaveCount(2)
+  await expect(page.getByText('This option is no longer available.', { exact: false })).toHaveCount(1)
+  await expect(page.getByText('Inactive', { exact: true })).toBeVisible()
+  await expect(page.getByText('Choose an active template to save changes.', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sandbox template', exact: true })).toHaveText('reports:v2')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Choose an active template to save changes.' })).toBeVisible()
+  expect(patches).toHaveLength(1)
   await page.getByRole('button', { name: 'Theme', exact: true }).click()
   await page.getByRole('option', { name: 'Dark', exact: true }).click()
   await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('button', { name: 'Sandbox template', exact: true }).click()
+  await expect(page.getByRole('option', { name: /reports:v2/ })).toBeDisabled()
+  await expect(page.getByRole('option', { name: /reports:v2/ })).toContainText('Inactive')
+  await page.getByRole('searchbox', { name: 'Search', exact: true }).press('ArrowDown')
+  await expect(page.getByRole('option', { name: /fixture/ })).toBeFocused()
+  await page.screenshot({ path: 'test-results/template-inactive-mobile-dark.png', fullPage: true })
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: 'Sandbox template', exact: true })).toHaveText('fixture')
   await page.getByRole('button', { name: 'Profile', exact: true }).click()
   await expect(page.getByRole('option', { name: /research/ })).toBeDisabled()
   await page.screenshot({ path: 'test-results/catalog-form-mobile-dark.png', fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.keyboard.press('Escape')
+  retired = false
   offline = true
   await page.reload()
   await expect(page.getByText('Reconnecting…')).toBeVisible()
@@ -379,4 +409,67 @@ test('catalog choices support descriptions, keyboard search and preserved offlin
   expect(patches.at(-1)).not.toHaveProperty('template')
   await expect(page.getByText('research', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'research', exact: true })).toHaveCount(0)
+  templatesOffline = true
+  await page.getByRole('link', { name: 'Edit schedule' }).click()
+  await expect(page.getByText('Could not check the template. You can save once Orpheus responds.', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sandbox template', exact: true })).toHaveText('reports:v2')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Could not check the template.' })).toBeVisible()
+  expect(patches).toHaveLength(2)
+})
+
+test('template choices load more pages, search the whole catalog and keep the default outside the first page', async ({ page }) => {
+  const names = Array.from({ length: 60 }, (_, index) => `tpl-${String(index).padStart(2, '0')}`)
+  const catalog = [...names.map((name, index) => template({ id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`, name, description: null, is_default: false })),
+    template({ id: '55555555-5555-4555-8555-555555555555', name: 'zz-default', description: 'Configured default', is_default: true })]
+  const requests: URLSearchParams[] = []
+  let failMore = false
+  await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
+  await page.route('**/api/v1/**', (route) => {
+    const url = new URL(route.request().url()), path = url.pathname
+    if (path.endsWith('/auth/session')) return route.fulfill({ json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null } })
+    if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings({ default_template: 'zz-default' }) })
+    if (path.endsWith('/templates')) {
+      requests.push(url.searchParams)
+      const matching = templatePage(route.request().url(), catalog).items
+      const cursor = Number(url.searchParams.get('cursor') ?? 0)
+      if (cursor && failMore) return route.fulfill({ status: 503, json: { error: { code: 'core_unavailable' } } })
+      const next = cursor + 25 < matching.length ? String(cursor + 25) : null
+      return route.fulfill({ json: { items: matching.slice(cursor, cursor + 25), next_cursor: next, prev_cursor: null } })
+    }
+    if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+    if (path.endsWith('/services')) return route.fulfill({ json: services() })
+    return route.fulfill({ json: schedule() })
+  })
+  await page.goto('/schedules/new')
+  const field = page.getByRole('button', { name: 'Sandbox template', exact: true })
+  await expect(field).toHaveText('zz-default')
+  await expect(page.getByText('Configured default', { exact: true })).toBeVisible()
+  expect(requests.some((query) => query.get('name') === 'zz-default' && !query.has('active'))).toBe(true)
+  await field.click()
+  const list = page.getByRole('listbox', { name: 'Sandbox template', exact: true })
+  await expect(list.getByRole('option')).toHaveCount(26)
+  await expect(list.getByRole('option').first()).toContainText('zz-default')
+  // Tab reaches the load-more button; bringing it into view means the reader is at the bottom, so the next page loads.
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: 'Show more', exact: true })).toBeFocused()
+  await expect(list.getByRole('option')).toHaveCount(51)
+  failMore = true
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('Could not load more templates. Try again.', { exact: true })).toBeVisible()
+  await expect(list.getByRole('option')).toHaveCount(51)
+  failMore = false
+  await page.getByRole('button', { name: 'Show more', exact: true }).click()
+  await expect(list.getByRole('option')).toHaveCount(61)
+  await expect(page.getByRole('button', { name: 'Show more', exact: true })).toHaveCount(0)
+  await page.getByRole('searchbox', { name: 'Search', exact: true }).fill('TPL-5')
+  // Ten matches (tpl-50 … tpl-59) plus the pinned current template, which never matches the search.
+  await expect(list.getByRole('option')).toHaveCount(11)
+  const search = requests.at(-1)!
+  expect(search.get('name_contains')).toBe('TPL-5')
+  expect(search.get('active')).toBe('true')
+  expect(search.has('cursor')).toBe(false)
+  await page.screenshot({ path: 'test-results/template-search-light.png', fullPage: true })
+  await list.getByRole('option', { name: 'tpl-57' }).click()
+  await expect(field).toHaveText('tpl-57')
 })

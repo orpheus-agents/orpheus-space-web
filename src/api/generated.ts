@@ -72,7 +72,10 @@ export type paths = {
             path?: never;
             cookie?: never;
         };
-        /** Get Orpheus templates and the creation default */
+        /**
+         * Get a page of Orpheus templates
+         * @description Returns active and inactive templates. The name filters are mutually exclusive. Cursors are bound to the filters; restart pagination after changing them.
+         */
         get: operations["GetTemplates"];
         put?: never;
         post?: never;
@@ -365,11 +368,18 @@ export type components = {
             items: components["schemas"]["Profile"][];
         };
         Template: {
+            /** Format: uuid */
+            id: string;
             name: string;
+            template_name: string;
+            tag: string | null;
             description: string | null;
+            active: boolean;
             is_default: boolean;
         };
         Templates: {
+            next_cursor: string | null;
+            prev_cursor: string | null;
             items: components["schemas"]["Template"][];
         };
         CreateSchedule: {
@@ -441,6 +451,8 @@ export type components = {
             next_cursor: string | null;
         };
         Settings: {
+            /** @description Configured creation default. Resolve it with GET /api/v1/templates?name=... without an active filter; it may be absent or inactive. */
+            default_template: string;
             /** @enum {string} */
             browser_auth: SettingsBrowser_auth;
         };
@@ -766,7 +778,15 @@ export interface operations {
     };
     GetTemplates: {
         parameters: {
-            query?: never;
+            query?: {
+                active?: boolean;
+                /** @description Exact stored name, including any team slug and tag; case-sensitive. */
+                name?: string;
+                /** @description Literal case-insensitive substring of the stored name. */
+                name_contains?: string;
+                limit?: number;
+                cursor?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

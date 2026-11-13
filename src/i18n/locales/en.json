@@ -230,7 +230,21 @@
     "missingHint": "This option is no longer available. You can keep it or choose a replacement.",
     "unavailable": "Could not load the choices. Try again later.",
     "loading": "Loading choices…",
-    "chooseHint": "No default is available. Choose an option."
+    "chooseHint": "No default is available. Choose an option.",
+    "resumeOffline": "Cannot check the template and services while Orpheus is unavailable. Try resuming later."
+  },
+  "template": {
+    "inactive": "Inactive",
+    "more": "Show more",
+    "moreFailed": "Could not load more templates. Try again.",
+    "wait": "Wait until the template is checked, then save.",
+    "resumeInvalid": "The schedule’s template is inactive or no longer registered. Choose an active template before resuming.",
+    "state": {
+      "loading": "Checking the template…",
+      "unavailable": "Could not check the template. You can save once Orpheus responds.",
+      "inactive": "Choose an active template to save changes.",
+      "missing": "This template is no longer registered. Choose an available one to save changes."
+    }
   },
   "services": {
     "title": "Services",
@@ -241,7 +255,6 @@
     "missingCode": "{code} (unavailable)",
     "emptyCatalog": "No services configured",
     "emptySelection": "Not selected",
-    "resumeOffline": "Cannot check services while Orpheus is unavailable. Try resuming later.",
     "resumeInvalid": "A selected service is unavailable. Edit the schedule’s services before resuming."
   }
 }

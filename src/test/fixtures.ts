@@ -1,4 +1,4 @@
-import { ProfileHarness, type Profiles, type Templates, type Services, SessionMode, Status, OccurrenceState, type Schedule, type Occurrence } from '../api/generated'
+import { ProfileHarness, SettingsBrowser_auth, type Profiles, type Settings, type Template, type Templates, type Services, SessionMode, Status, OccurrenceState, type Schedule, type Occurrence } from '../api/generated'
 export const taskID = '11111111-1111-4111-8111-111111111111'
 export const occurrenceID = '22222222-2222-4222-8222-222222222222'
 export const timestamp = '2026-10-01T10:00:00Z'
@@ -55,11 +55,28 @@ export function profiles(): Profiles {
     { name: 'research', description: 'Search and compare sources', harness: ProfileHarness.codex, model: 'research-model', codex: {}, instructions: '', is_default: false },
   ] }
 }
+export function template(overrides: Partial<Template> = {}): Template {
+  const name = overrides.name ?? 'fixture'
+  const [templateName, tag = null] = name.split(':')
+  return { id: '33333333-3333-4333-8333-333333333333', name, template_name: templateName, tag, description: 'Standard tools', active: true, is_default: name === 'fixture', ...overrides }
+}
 export function templates(): Templates {
   return { items: [
-    { name: 'fixture', description: 'Standard tools', is_default: true },
-    { name: 'reports:v2', description: 'Tools for reports', is_default: false },
-  ] }
+    template(),
+    template({ id: '44444444-4444-4444-8444-444444444444', name: 'reports:v2', description: 'Tools for reports' }),
+  ], next_cursor: null, prev_cursor: null }
+}
+export function settings(overrides: Partial<Settings> = {}): Settings {
+  return { browser_auth: SettingsBrowser_auth.anonymous, default_template: 'fixture', ...overrides }
+}
+/** Answers a template catalog request like Space: exact `name`, `active` and `name_contains` filters over `items`. */
+export function templatePage(url: string, items = templates().items): Templates {
+  const query = new URL(url, 'http://localhost').searchParams
+  const name = query.get('name'), contains = query.get('name_contains')?.toLowerCase(), active = query.get('active')
+  return {
+    items: items.filter((item) => (name === null || item.name === name) && (contains === undefined || item.name.toLowerCase().includes(contains)) && (active === null || String(item.active) === active)),
+    next_cursor: null, prev_cursor: null,
+  }
 }
 
 export function services(): Services {

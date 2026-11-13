@@ -18,14 +18,25 @@ services:
       timeout: 2s
       retries: 30
   core-migrate:
-    image: retailcrm/orpheus:0.6.0
+    image: retailcrm/orpheus:0.11.0
     command: [migrate, up]
     environment:
       DATABASE_URL: postgres://orpheus:fixture-password@core-db:5432/orpheus
     depends_on:
       core-db: {condition: service_healthy}
+  core-seed:
+    image: postgres:16.10
+    command: [psql, --set, ON_ERROR_STOP=1, --file, /fixtures/templates.sql]
+    environment:
+      PGHOST: core-db
+      PGDATABASE: orpheus
+      PGUSER: orpheus
+      PGPASSWORD: fixture-password
+    volumes: [./templates.sql:/fixtures/templates.sql:ro]
+    depends_on:
+      core-migrate: {condition: service_completed_successfully}
   core:
-    image: retailcrm/orpheus:0.6.0
+    image: retailcrm/orpheus:0.11.0
     environment:
       DATABASE_URL: postgres://orpheus:fixture-password@core-db:5432/orpheus
       PUBLIC_API_KEYS: '["fixture-core-key"]'
@@ -38,7 +49,7 @@ services:
       start_period: 5s
       retries: 30
     depends_on:
-      core-migrate: {condition: service_completed_successfully}
+      core-seed: {condition: service_completed_successfully}
   db:
     image: postgres:16.10
     environment:
