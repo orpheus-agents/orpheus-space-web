@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { profiles, templates, services, schedule, taskID } from '../src/test/fixtures'
+import { profiles, settings, templatePage, services, schedule, taskID } from '../src/test/fixtures'
 
 for (const locale of ['en', 'ru']) for (const theme of ['light', 'dark']) {
   test(`service selection and card details in ${locale} ${theme}`, async ({ page }) => {
@@ -15,7 +15,8 @@ for (const locale of ['en', 'ru']) for (const theme of ['light', 'dark']) {
       const request = route.request(), path = new URL(request.url()).pathname
       if (path.endsWith('/auth/session')) return route.fulfill({ json: { mode: 'saml', authenticated: true, read_access: true, write_access: true, can_manage_all: false, user: { subject: 'alice', display_name: 'Alice', email: 'alice@example.com' }, expires_at: null } })
       if (path === '/api/v1/profiles') return route.fulfill({ json: profiles() })
-      if (path === '/api/v1/templates') return route.fulfill({ json: templates() })
+      if (path === '/api/v1/schedules/settings') return route.fulfill({ json: settings() })
+      if (path === '/api/v1/templates') return route.fulfill({ json: templatePage(route.request().url()) })
       if (path === '/api/v1/services') return route.fulfill({ json: services() })
       if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [], next_cursor: null } })
       if (request.method() === 'PATCH') {

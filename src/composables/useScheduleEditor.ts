@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { ApiError, get, write, isScheduleForbidden } from '../api/client'
 import { SessionMode, Status, type CreateSchedule } from '../api/generated'
 import { useCatalogs } from './useCatalogs'
+import { useResource } from './useResource'
+import { useTemplate, useTemplateOptions } from './useTemplates'
 import { useSettings } from './useSettings'
 import { useAction } from './useAction'
 import { useToasts } from './useToasts'
@@ -11,6 +13,8 @@ import { useAuthSession, useRefreshAuth } from './useAuth'
 
 const FIELDS = ['name', 'prompt', 'cron', 'timezone', 'status', 'model', 'owner_email', 'session_mode', 'services', 'profile', 'template'] as const
 export type Field = (typeof FIELDS)[number]
+/** Space explains why a stored template cannot be selected; other problems use the field's own message. */
+const TEMPLATE_PROBLEMS: Partial<Record<string, string>> = { template_inactive: 'template.state.inactive', template_not_found: 'template.state.missing' }
 
 export function useScheduleEditor() {
   const route = useRoute(),
@@ -39,14 +43,35 @@ export function useScheduleEditor() {
   const catalogs = useCatalogs()
   const storedServices = ref<string[]>([])
   let originalSelection: { profile: string; template: string } | undefined
-  for (const field of ['profile', 'template'] as const) {
-    const source = field === 'profile' ? catalogs.profiles : catalogs.templates
-    let initialized = false
-    watch(source.data, (data) => {
-      if (id || initialized || !data) return
-      initialized = true
-      if (!form[field]) form[field] = data.items.find((item) => item.is_default)?.name ?? ''
-    })
+  let profileInitialized = false
+  watch(catalogs.profiles.data, (data) => {
+    if (id || profileInitialized || !data) return
+    profileInitialized = true
+    if (!form.profile) form.profile = data.items.find((item) => item.is_default)?.name ?? ''
+  })
+  // A new schedule starts with the configured default only after an exact check finds it active;
+  // there is no fallback to the first available template. One lookup serves the default and the choice.
+  const resolvingDefault = ref(!id)
+  const settings = useResource((signal) => get('/api/v1/schedules/settings', { signal }), () => (resolvingDefault.value ? 'settings' : null), { interval: 30_000 })
+  const defaultTemplate = computed(() => (resolvingDefault.value ? (settings.data.value?.default_template ?? '') : ''))
+  const lookup = useTemplate(() => form.template || defaultTemplate.value)
+  watch([lookup.state, () => form.template], ([state, template]) => {
+    if (!resolvingDefault.value) return
+    if (template) resolvingDefault.value = false
+    else if (defaultTemplate.value && (state === 'inactive' || state === 'missing')) resolvingDefault.value = false
+    else if (defaultTemplate.value && state === 'active') {
+      form.template = defaultTemplate.value
+      resolvingDefault.value = false
+    }
+  })
+  const template = {
+    current: computed(() => (form.template ? lookup.template.value : null)),
+    state: computed(() => (form.template ? lookup.state.value : 'empty')),
+    resolvingDefault,
+    options: useTemplateOptions(),
+    disconnected: computed(() => lookup.disconnected.value || settings.disconnected.value),
+    pending: computed(() => lookup.pending.value || (resolvingDefault.value && settings.pending.value)),
+    refresh: () => Promise.all([lookup.refresh(), settings.refresh(), template.options.reload()]),
   }
   /** Server-side validation problems by field; the API names the field, the dictionary explains it. */
   const fieldErrors = reactive<Partial<Record<Field, string>>>({})
@@ -66,7 +91,10 @@ export function useScheduleEditor() {
     for (const detail of cause.problem?.details ?? []) {
       const field = fields.find((name) => detail.path[0] === 'body' && detail.path[1] === name)
       if (!field) continue
-      fieldErrors[field] = te(`validation.${field}`) ? t(`validation.${field}`) : t(`validation.${detail.code}`)
+      const specific = field === 'template' ? TEMPLATE_PROBLEMS[detail.code] : undefined
+      // The selection changed in Orpheus after the last check: show its current state too.
+      if (field === 'template') void lookup.refresh()
+      fieldErrors[field] = specific ? t(specific) : te(`validation.${field}`) ? t(`validation.${field}`) : t(`validation.${detail.code}`)
       matched = true
     }
     return matched
@@ -159,7 +187,10 @@ export function useScheduleEditor() {
     for (const field of ['profile', 'template'] as const) {
       if (!form[field]) fieldErrors[field] = t(`validation.${field}`)
     }
-    if (!form.profile || !form.template) { push(t('validation.failed')); return }
+    // Saving waits for an exact check of the selected template: the server rejects inactive and missing ones.
+    const state = template.state.value
+    if (form.template && state !== 'active') fieldErrors.template = t(state === 'loading' ? 'template.wait' : `template.state.${state}`)
+    if (!form.profile || !form.template || state !== 'active') { push(t('validation.failed')); return }
     const body = payload()
     const serialized = JSON.stringify(body)
     await action.run(
@@ -200,6 +231,7 @@ export function useScheduleEditor() {
     canManageAll,
     canSave,
     catalogs,
+    template,
     storedServices,
     form,
     fieldErrors,

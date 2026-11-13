@@ -5,8 +5,8 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { provideToasts } from './useToasts'
 import { useScheduleEditor } from './useScheduleEditor'
 import { useSettings } from './useSettings'
-import { profiles, templates, services, schedule } from '../test/fixtures'
-import { AuthSessionMode, type Profiles, type Templates, type AuthSession, type Services } from '../api/generated'
+import { profiles, template, templatePage, templates, services, schedule } from '../test/fixtures'
+import { AuthSessionMode, SettingsBrowser_auth, type Profiles, type Templates, type AuthSession, type Services } from '../api/generated'
 import { provideAuthSession } from './useAuth'
 import ScheduleForm from '../components/ScheduleForm.vue'
 let wrapper: ReturnType<typeof mount>
@@ -108,7 +108,7 @@ it('explains deletion instead of ownership when an editor URL points to a delete
   await state.load()
   expect(notifications.toasts.value.at(-1)?.message).toBe('This schedule has been deleted. Its history is retained.')
 })
-async function setup(edit = false, email: string | null = null, catalogServices: Services | null = services(), renderForm = false, catalogs: { profiles: Profiles | null; templates: Templates | null } = { profiles: profiles(), templates: templates() }) {
+async function setup(edit = false, email: string | null = null, catalogServices: Services | null = services(), renderForm = false, catalogs: { profiles: Profiles | null; templates: Templates | null; defaultTemplate?: string } = { profiles: profiles(), templates: templates() }) {
   const refreshAuth = vi.fn(async () => true)
   const session = shallowRef<AuthSession>({
     mode: AuthSessionMode.saml, authenticated: true, read_access: true, write_access: true, can_manage_all: true,
@@ -116,9 +116,12 @@ async function setup(edit = false, email: string | null = null, catalogServices:
   })
   const fetcher = vi.fn((url: string) => {
     if (url.endsWith('/services')) return Promise.resolve(Response.json(catalogServices ?? { error: { code: 'core_unavailable' } }, { status: catalogServices ? 200 : 503 }))
-    if (url.endsWith('/profiles') || url.endsWith('/templates')) {
-      const items = url.endsWith('/profiles') ? catalogs.profiles : catalogs.templates
-      return Promise.resolve(Response.json(items ?? { error: { code: 'core_unavailable' } }, { status: items ? 200 : 503 }))
+    if (url.endsWith('/schedules/settings')) return Promise.resolve(Response.json({ browser_auth: SettingsBrowser_auth.saml, default_template: catalogs.defaultTemplate ?? 'fixture' }))
+    if (url.includes('/templates')) {
+      return Promise.resolve(catalogs.templates ? Response.json(templatePage(url, catalogs.templates.items)) : Response.json({ error: { code: 'core_unavailable' } }, { status: 503 }))
+    }
+    if (url.endsWith('/profiles')) {
+      return Promise.resolve(Response.json(catalogs.profiles ?? { error: { code: 'core_unavailable' } }, { status: catalogs.profiles ? 200 : 503 }))
     }
     return Promise.resolve(Response.json(schedule()))
   })
@@ -167,7 +170,7 @@ it('prefills the owner once for new schedules, leaving edits and cleared values 
   const edit = await setup(true, 'operator@example.com')
   expect(edit.state.form.owner_email).toBe('alice@example.com')
   edit.fetcher.mockImplementation((url: string) => Promise.resolve(Response.json(
-    url.endsWith('/profiles') ? profiles() : url.endsWith('/templates') ? templates() : url.endsWith('/services') ? services() : schedule({ owner_email: null }),
+    url.endsWith('/profiles') ? profiles() : url.includes('/templates') ? templatePage(url) : url.endsWith('/services') ? services() : schedule({ owner_email: null }),
   )))
   await edit.state.load()
   expect(edit.state.form.owner_email).toBe('')
@@ -349,14 +352,14 @@ it('recovers initially unavailable catalogs independently without overwriting ed
   expect(state.form.profile).toBe('')
   expect(state.form.template).toBe('fixture')
   state.form.template = 'reports:v2'
-  fetcher.mockImplementation((url: string) => Promise.resolve(Response.json(url.endsWith('/profiles') ? profiles() : url.endsWith('/services') ? services() : templates())))
+  fetcher.mockImplementation((url: string) => Promise.resolve(Response.json(url.endsWith('/profiles') ? profiles() : url.endsWith('/services') ? services() : templatePage(url))))
   await state.catalogs.refresh()
   expect(state.form.profile).toBe('default')
   expect(state.form.template).toBe('reports:v2')
 })
 
-it('edits stored selections offline and sends only changed selections', async () => {
-  const { state, fetcher } = await setup(true, null, services(), false, { profiles: null, templates: null })
+it('edits a stored profile offline and sends only changed selections', async () => {
+  const { state, fetcher } = await setup(true, null, services(), false, { profiles: null, templates: templates() })
   expect(state.form.profile).toBe('default')
   expect(state.form.template).toBe('fixture')
   const bodies: Record<string, unknown>[] = []
@@ -373,6 +376,56 @@ it('edits stored selections offline and sends only changed selections', async ()
   await state.save()
   expect(bodies[1]).toMatchObject({ profile: 'research', model: 'explicit-model' })
   expect(bodies[1]).not.toHaveProperty('template')
+})
+
+it('waits for a confirmed active template before saving and keeps the stored value', async () => {
+  const offline = await setup(true, null, services(), false, { profiles: profiles(), templates: null })
+  expect(offline.state.template.state.value).toBe('unavailable')
+  offline.fetcher.mockClear()
+  await offline.state.save()
+  expect(offline.fetcher).not.toHaveBeenCalled()
+  expect(offline.state.fieldErrors.template).toBe('Could not check the template. You can save once Orpheus responds.')
+  expect(offline.state.form.template).toBe('fixture')
+  wrapper.unmount()
+  const inactive = await setup(true, null, services(), false, { profiles: profiles(), templates: { items: [template({ active: false })], next_cursor: null, prev_cursor: null } })
+  expect(inactive.state.template.state.value).toBe('inactive')
+  expect(inactive.state.template.current.value?.description).toBe('Standard tools')
+  inactive.fetcher.mockClear()
+  await inactive.state.save()
+  expect(inactive.fetcher).not.toHaveBeenCalled()
+  expect(inactive.state.fieldErrors.template).toBe('Choose an active template to save changes.')
+  expect(inactive.state.form.template).toBe('fixture')
+  wrapper.unmount()
+  const missing = await setup(true, null, services(), false, { profiles: profiles(), templates: { items: [], next_cursor: null, prev_cursor: null } })
+  expect(missing.state.template.state.value).toBe('missing')
+  await missing.state.save()
+  expect(missing.state.fieldErrors.template).toBe('This template is no longer registered. Choose an available one to save changes.')
+})
+
+it('starts a new schedule with the default only when it is registered and active', async () => {
+  const inactive = await setup(false, null, services(), false, { profiles: profiles(), templates: { items: [template({ active: false }), template({ id: '44444444-4444-4444-8444-444444444444', name: 'other' })], next_cursor: null, prev_cursor: null } })
+  expect(inactive.state.form.template).toBe('')
+  expect(inactive.state.template.resolvingDefault.value).toBe(false)
+  expect(inactive.fetcher.mock.calls.map(([url]) => url)).toContain('/api/v1/templates?name=fixture')
+  wrapper.unmount()
+  const missing = await setup(false, null, services(), false, { profiles: profiles(), templates: templates(), defaultTemplate: 'retired' })
+  expect(missing.state.form.template).toBe('')
+  expect(missing.state.template.state.value).toBe('empty')
+  wrapper.unmount()
+  const outside = await setup(false, null, services(), false, { profiles: profiles(), templates: templates(), defaultTemplate: 'reports:v2' })
+  expect(outside.state.form.template).toBe('reports:v2')
+  expect(outside.fetcher.mock.calls.filter(([url]) => url === '/api/v1/templates?name=reports%3Av2')).toHaveLength(1)
+})
+
+it('explains inactive and removed templates reported by the server', async () => {
+  const { state, fetcher } = await setup()
+  state.form.prompt = 'Work'
+  fetcher.mockImplementation(() => Promise.resolve(Response.json({ error: {
+    code: 'validation_error', message: '', phase: null, details: [{ path: ['body', 'template'], code: 'template_inactive' }],
+  } }, { status: 422 })))
+  await state.save()
+  expect(state.fieldErrors.template).toBe('Choose an active template to save changes.')
+  expect(fetcher.mock.calls.map(([url]) => url)).toContain('/api/v1/templates?name=fixture')
 })
 
 it('shows profile/template validation at the corresponding field', async () => {

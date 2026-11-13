@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { schedule, profiles, templates, services, occurrence, taskID } from '../src/test/fixtures'
+import { schedule, profiles, settings, templatePage, services, occurrence, taskID } from '../src/test/fixtures'
 
 async function fixture(page: Page, email: string | null = 'alice@example.com') {
   let allowed = true
@@ -13,7 +13,8 @@ async function fixture(page: Page, email: string | null = 'alice@example.com') {
       user: { subject: 'user', display_name: 'Alice', email }, expires_at: null,
     } })
     if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
-    if (path.endsWith('/templates')) return route.fulfill({ json: templates() })
+    if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings() })
+    if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(route.request().url()) })
     if (path.endsWith('/services')) return route.fulfill({ json: services() })
     if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [occurrence()], next_cursor: null } })
     if (req.method() !== 'GET') {

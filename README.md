@@ -52,8 +52,8 @@ npm run stack:start
 ```
 
 The disposable stack builds the pinned Space commit, migrates an isolated Postgres
-and serves the production nginx frontend. Orpheus v0.6.0 provides real profile and
-template catalogs, using a separate disposable database. No workers, AgentBox
+and serves the production nginx frontend. Orpheus v0.11.0 provides real profile and
+template catalogs, using a separate disposable database with seeded template records. No workers, AgentBox
 or model credentials are needed. Fixtures contain public test keys only. `npm run stack:stop`
 stops the stack and discards its temporary database.
 
@@ -111,12 +111,11 @@ client, cookie and auth storage. 401 prompts sign-in; 503 preserves access state
 and permits retry. Local logout does not end the Keycloak/core session.
 The frontend contains only the Schedules section and needs no section feature flag.
 
-Profile and template fields offer keyboard-accessible search by name or description,
-mark creation defaults and show the selected description below the field. Defaults
-are applied once for new schedules; later catalog refreshes preserve the user's choice.
-Editing keeps stored names, including removed choices. Catalog failures do not block
-local edits or selecting from the last loaded catalog. Unchanged selections are
-omitted from PATCH, and switching profiles keeps an explicit model override.
+Profile and template fields offer keyboard-accessible search, creation defaults
+and descriptions. [Template selection](docs/templates.md) uses server-side search,
+pagination and an exact check of the saved or default name. Saving requires an
+active template; pause and delete remain available while core is offline.
+Unchanged selections are omitted from PATCH, and switching profiles keeps an explicit model override.
 The model placeholder shows the selected profile's model without saving it as an
 override. Schedule cards show stored names with optional description tooltips;
 unavailable catalogs do not block the card or history.
@@ -140,9 +139,9 @@ services by name in one row, and a name shows its description and ENV names on
 hover or keyboard focus. Values are never displayed. No services are selected
 by default. Missing or unavailable selections remain visible by code and can be
 removed or preserved. Root `/api/v1/services`, `/api/v1/profiles` and
-`/api/v1/templates` supply the catalogs. The schedule settings endpoint is not
-needed by the editor. Resuming with invalid services or an unavailable core
-produces an explanatory notification.
+`/api/v1/templates` supply the catalogs. The schedule settings endpoint supplies
+the default template name independently of list pages. Resuming with an invalid
+template or service, or an unavailable core, produces an explanatory notification.
 
 ## Checks and releases
 
@@ -150,8 +149,8 @@ produces an explanatory notification.
   unused dependencies, vulnerabilities and production build.
 - `make test-e2e`: browser fixtures, editing, history, automatic run results and themes.
 - `make test-integration`: real nginx + Space + Postgres, anonymous and SAML CRUD,
-  CSRF/logout, separate Keycloak client access, real Orpheus catalogs and editing
-  with Orpheus offline.
+  CSRF/logout, separate Keycloak client access, real Orpheus catalogs, rejected
+  offline edits/resume and permitted offline pause/delete.
 - `make docker-build`: production image. Static assets build on BUILDPLATFORM;
   nginx runs as an unprivileged user and exposes `/healthz` on 8080.
 
