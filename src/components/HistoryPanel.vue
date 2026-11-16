@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useOccurrences } from '../composables/useOccurrences'
 import { useSettings } from '../composables/useSettings'
 import { formatDate } from '../format'
+import { OccurrenceTrigger } from '../api/generated'
 import { problemCode } from '../occurrence/outcome'
 import RefreshStatus from './RefreshStatus.vue'
 import PageState from './PageState.vue'
@@ -50,6 +51,7 @@ watch(state.selected, async (selected) => {
               <button class="text-left underline underline-offset-4" :aria-expanded="state.selected.value === run.id" @click.stop="state.selected.value = run.id">
                 {{ formatDate(run.scheduled_at, locale, timeZone) }}
               </button>
+              <span v-if="run.trigger === OccurrenceTrigger.manual" class="ml-2 text-xs text-muted" :title="t('history.manualTimeHint')">{{ t('occurrenceTrigger.manual') }}</span>
             </td>
             <td><OccurrenceStatus :occurrence="{ state: run.state, run_status: null }" /></td>
             <td><OccurrenceStatus v-if="run.run_status" :status="run.run_status" /><span v-else class="text-muted">{{ t('common.none') }}</span></td>

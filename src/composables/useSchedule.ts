@@ -1,11 +1,13 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { get, write, isScheduleForbidden } from '../api/client'
+import { useI18n } from 'vue-i18n'
+import { ApiError, get, write, isScheduleForbidden } from '../api/client'
 import { Status } from '../api/generated'
 import { useResource } from './useResource'
 import { useAction } from './useAction'
 import { useResumeError } from './useResumeError'
-import { useRefreshAuth } from './useAuth'
+import { useAuthSession, useRefreshAuth } from './useAuth'
+import { useToasts } from './useToasts'
 export function useSchedule() {
   const route = useRoute(),
     router = useRouter()
@@ -17,6 +19,13 @@ export function useSchedule() {
   const action = useAction()
   const resumeError = useResumeError()
   const refreshAuth = useRefreshAuth()
+  const session = useAuthSession()
+  const { t } = useI18n()
+  const { push } = useToasts()
+  let runKey: string | undefined
+  watch([id, () => session.value?.mode, () => session.value?.user?.subject, () => session.value?.user?.email], () => {
+    runKey = undefined
+  }, { flush: 'sync' })
   const confirm = ref<'delete' | 'reset' | null>(null)
   watch(() => resource.data.value?.can_edit, (canEdit) => { if (!canEdit) confirm.value = null })
   async function onError(error: unknown) {
@@ -37,6 +46,19 @@ export function useSchedule() {
       await resource.refresh()
     }, { onError })
   }
+  async function runNow() {
+    if (!resource.data.value?.can_edit || resource.data.value.id !== id.value) return
+    await action.run(async (signal) => {
+      const key = runKey ??= crypto.randomUUID()
+      await write('post', '/api/v1/schedules/{id}/run', { signal, path: { id: id.value }, idempotencyKey: key })
+      if (runKey === key) runKey = undefined
+      push(t('schedule.runAccepted'))
+    }, { onError: async (error) => {
+      if (error instanceof ApiError && error.problem?.code === 'schedule_busy') return t('schedule.runBusy')
+      if (!(error instanceof ApiError) || error.status >= 500) return t('schedule.runUncertain')
+      return onError(error)
+    } })
+  }
   async function execute() {
     if (!resource.data.value?.can_edit || !confirm.value) return
     await action.run(async (signal) => {
@@ -50,5 +72,5 @@ export function useSchedule() {
       confirm.value = null
     }, { onError })
   }
-  return { ...resource, id, toggle, busy: action.busy, confirm, execute }
+  return { ...resource, id, toggle, runNow, busy: action.busy, confirm, execute }
 }

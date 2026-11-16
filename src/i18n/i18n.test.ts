@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import en from './locales/en.json'
 import ru from './locales/ru.json'
 import { ruPluralRule } from './index'
-import { OccurrenceState, SessionMode, Status } from '../api/generated'
+import { OccurrenceState, OccurrenceTrigger, SessionMode, Status } from '../api/generated'
 import { ERROR_CODES, RUN_STATUSES } from '../occurrence/outcome'
 import { KINDS } from '../cron'
 
@@ -105,6 +105,7 @@ describe('i18n dictionary coverage', () => {
     ['status', Object.values(Status)],
     ['sessionMode', Object.values(SessionMode)],
     ['occurrence', Object.values(OccurrenceState)],
+    ['occurrenceTrigger', Object.values(OccurrenceTrigger)],
     ['runStatus', RUN_STATUSES],
     ['errorCode', ERROR_CODES],
     ['cron.kind', KINDS],

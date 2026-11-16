@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { OccurrenceState } from '../api/generated'
+import { OccurrenceState, OccurrenceTrigger } from '../api/generated'
 import type { useOccurrences } from '../composables/useOccurrences'
 import { useSettings } from '../composables/useSettings'
 import { formatDate, formatDuration } from '../format'
@@ -38,8 +38,9 @@ const noRun = computed(() => run.value !== null && run.value.run_id === null && 
       />
       <dl class="my-5 grid gap-4 break-all text-sm sm:grid-cols-2">
         <div>
-          <dt class="caps mb-1 text-muted">{{ t('history.scheduled') }}</dt>
+          <dt class="caps mb-1 text-muted">{{ run.trigger === OccurrenceTrigger.manual ? t('history.manualRequested') : t('history.scheduled') }}</dt>
           <dd>{{ formatDate(run.scheduled_at, locale, timeZone) }}</dd>
+          <dd v-if="run.trigger === OccurrenceTrigger.manual" class="text-muted">{{ t('history.manualTimeHint') }}</dd>
         </div>
         <div>
           <dt class="caps mb-1 text-muted">{{ t('history.state') }}</dt>

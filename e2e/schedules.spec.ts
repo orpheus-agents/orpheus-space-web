@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { profiles, settings, template, templatePage, services, schedule, occurrence, taskID, occurrenceID, timestamp } from '../src/test/fixtures'
+import { OccurrenceState, OccurrenceTrigger, Status } from '../src/api/generated'
 
 test('new schedule uses the signed-in email and handles an empty service catalog', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
@@ -76,13 +77,14 @@ test('list, editing, history and automatic result work in both themes', async ({
   await expect(page.getByRole('cell', { name: 'No runs yet' })).toBeVisible()
   const taskRow = page.locator('tbody tr').first()
   await expect(taskRow).toHaveCSS('cursor', 'pointer')
-  await taskRow.getByRole('button', { name: 'Pause', exact: true }).click()
-  await expect(taskRow.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()
-  await expect(page).toHaveURL(/\/schedules$/)
-  await taskRow.getByRole('button', { name: 'Resume', exact: true }).click()
-  await expect(taskRow.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+  await expect(taskRow.getByRole('button')).toHaveCount(0)
+  await expect(taskRow.getByRole('cell', { name: 'Active', exact: true })).toBeVisible()
   await taskRow.locator('td').nth(1).click()
   await expect(page).toHaveURL(`/schedules/${taskID}`)
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Resume', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
   await page.goBack()
   await page.getByRole('link', { name: 'Daily report' }).focus()
   await page.keyboard.press('Enter')
@@ -120,10 +122,59 @@ test('list, editing, history and automatic result work in both themes', async ({
   await page.screenshot({ path: 'test-results/editor-mobile.png', fullPage: true })
 })
 
+for (const locale of ['en', 'ru'] as const) {
+  test(`manual run on pause reuses an uncertain request and appears in history (${locale})`, async ({ page }) => {
+    await page.clock.install()
+    await page.addInitScript((language) => localStorage.setItem('orpheus_locale', language), locale)
+    if (locale === 'ru') await page.setViewportSize({ width: 390, height: 844 })
+    const task = schedule({ status: Status.paused, next_run_at: null })
+    const manual = occurrence({ trigger: OccurrenceTrigger.manual, state: OccurrenceState.pending, run_id: null, session_id: null, run_status: null, observed_at: null, execution_started_at: null, finished_at: null, attempts: 0 })
+    const keys: string[] = []
+    let accepted = false
+    await page.route('**/api/v1/**', (route) => {
+      const req = route.request(), path = new URL(req.url()).pathname
+      if (path.endsWith('/auth/session')) return route.fulfill({ json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null } })
+      if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+      if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(req.url()) })
+      if (path.endsWith('/services')) return route.fulfill({ json: services() })
+      if (path.endsWith('/run')) {
+        expect(req.method()).toBe('POST')
+        expect(req.postData()).toBeNull()
+        keys.push(req.headers()['idempotency-key']!)
+        if (keys.length === 1) return route.abort('failed')
+        if (accepted) return route.fulfill({ status: 409, json: { error: { code: 'schedule_busy' } } })
+        accepted = true
+        return route.fulfill({ status: 202, json: manual })
+      }
+      if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: accepted ? [manual] : [], next_cursor: null } })
+      if (path.endsWith(`/${occurrenceID}`)) return route.fulfill({ json: manual })
+      return route.fulfill({ json: task })
+    })
+    await page.goto(`/schedules/${taskID}`)
+    const run = page.getByRole('button', { name: locale === 'en' ? 'Run now' : 'Запустить сейчас', exact: true })
+    await run.click()
+    await expect(page.getByText(locale === 'en' ? /Could not confirm the run/ : /Не удалось подтвердить запуск/)).toBeVisible()
+    await run.click()
+    await expect(page.getByText(locale === 'en' ? 'Run accepted' : 'Запуск принят', { exact: true })).toBeVisible()
+    expect(keys[0]).toBe(keys[1])
+    await expect(page.getByRole('button', { name: locale === 'en' ? 'Resume' : 'Продолжить', exact: true })).toBeVisible()
+    await page.clock.fastForward(6000)
+    await expect(page.locator('tbody').getByText(locale === 'en' ? 'Manual' : 'Вручную', { exact: true })).toBeVisible()
+    await run.click()
+    await expect(page.getByText(locale === 'en' ? 'The previous run has not finished yet.' : 'Предыдущий запуск ещё не завершён.', { exact: true })).toBeVisible()
+    expect(keys[2]).not.toBe(keys[1])
+    await page.locator('tbody button').click()
+    await expect(page.getByText(locale === 'en' ? 'Manual run requested' : 'Ручной запуск запрошен', { exact: true })).toBeVisible()
+    await page.screenshot({ path: `test-results/manual-run-${locale}.png`, fullPage: true })
+  })
+}
+
 test('filters repeat owner emails, retain them across cursor pages and clear cursor on changes', async ({ page }) => {
+  let lastQuery = new URLSearchParams()
   await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
   await page.route('**/api/v1/**', (route) => {
     const url = new URL(route.request().url())
+    if (url.pathname === '/api/v1/schedules') lastQuery = url.searchParams
     return route.fulfill({
       json: url.pathname.endsWith('/auth/session')
         ? { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null }
@@ -131,6 +182,8 @@ test('filters repeat owner emails, retain them across cursor pages and clear cur
     })
   })
   await page.goto('/schedules')
+  await expect(page.getByRole('combobox', { name: 'Status', exact: true })).toHaveValue('active')
+  await expect.poll(() => lastQuery.get('status')).toBe('active')
   await page.getByLabel('Owner emails, separated by commas').fill('alice@example.com, bob@example.com')
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
   await expect.poll(() => new URL(page.url()).searchParams.getAll('owner_email')).toEqual(['alice@example.com', 'bob@example.com'])
@@ -143,6 +196,16 @@ test('filters repeat owner emails, retain them across cursor pages and clear cur
   await expect.poll(() => new URL(page.url()).searchParams.get('unowned')).toBe('true')
   expect(new URL(page.url()).searchParams.has('owner_email')).toBe(false)
   expect(new URL(page.url()).searchParams.has('cursor')).toBe(false)
+  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('all')
+  await page.getByRole('button', { name: 'Apply', exact: true }).click()
+  await expect.poll(() => new URL(page.url()).searchParams.get('status')).toBe('all')
+  await expect.poll(() => lastQuery.has('status')).toBe(false)
+  await page.reload()
+  await expect(page.getByRole('combobox', { name: 'Status', exact: true })).toHaveValue('all')
+  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('paused')
+  await page.getByRole('button', { name: 'Apply', exact: true }).click()
+  await expect.poll(() => lastQuery.get('status')).toBe('paused')
+  expect(lastQuery.get('unowned')).toBe('true')
 })
 
 test('schedule prompts render Markdown and front matter while preserving the editable source', async ({ page }) => {

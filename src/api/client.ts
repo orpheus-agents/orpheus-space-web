@@ -78,9 +78,11 @@ type Body<O> = O extends { requestBody: { content: { 'application/json': infer B
 type WriteResponse<O> = O extends { responses: infer R }
   ? R extends { 201: { content: { 'application/json': infer B } } }
     ? B
-    : R extends { 200: { content: { 'application/json': infer B } } }
+    : R extends { 202: { content: { 'application/json': infer B } } }
       ? B
-      : void
+      : R extends { 200: { content: { 'application/json': infer B } } }
+        ? B
+        : void
   : never
 export async function write<M extends WriteMethod, P extends WritePath<M>>(
   method: M,
