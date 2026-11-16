@@ -89,6 +89,10 @@
     "timing": "Schedule",
     "pause": "Pause",
     "resume": "Resume",
+    "runNow": "Run now",
+    "runAccepted": "Run accepted",
+    "runBusy": "The previous run has not finished yet.",
+    "runUncertain": "Could not confirm the run. Retry in this card, or check history before requesting another run.",
     "empty": "No schedules",
     "emptyHint": "Create a schedule or change the filters.",
     "model": "Model",
@@ -159,6 +163,10 @@
     "new": "New session for each run",
     "reuse": "Continue the same session"
   },
+  "occurrenceTrigger": {
+    "scheduled": "Scheduled",
+    "manual": "Manual"
+  },
   "occurrence": {
     "pending": "Pending",
     "dispatching": "Dispatching",
@@ -201,7 +209,9 @@
     "title": "Run history",
     "run": "Run details",
     "empty": "No runs yet",
-    "emptyHint": "Runs appear here after the scheduled time.",
+    "emptyHint": "Runs appear here after the scheduled time or a manual request.",
+    "manualRequested": "Manual run requested",
+    "manualTimeHint": "Time of the manual request, not the execution start.",
     "scheduled": "Scheduled for",
     "state": "Dispatch",
     "status": "Observed run status",

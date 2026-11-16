@@ -215,6 +215,28 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/schedules/{id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a schedule now without changing its timing or activity
+         * @description Requires permission to edit the schedule. Active and paused schedules can run manually. Returns 409 schedule_busy while an occurrence is unfinished, including an unknown dispatch outcome. A repeated key for this schedule returns the same occurrence with its current state, even after completion or deletion, subject to current permissions. The worker prepares the saved settings through the usual execution path. Acceptance does not mean the agent has started.
+         */
+        post: operations["RunSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schedules/{id}/reset-session": {
         parameters: {
             query?: never;
@@ -486,7 +508,11 @@ export type components = {
             id: string;
             /** Format: uuid */
             schedule_id: string;
-            /** Format: date-time */
+            trigger: components["schemas"]["OccurrenceTrigger"];
+            /**
+             * Format: date-time
+             * @description Cron due time for a scheduled occurrence, or command acceptance time for a manual occurrence. This is not the execution start time.
+             */
             scheduled_at: string;
             state: components["schemas"]["OccurrenceState"];
             /** Format: date-time */
@@ -533,13 +559,19 @@ export type components = {
             } | null;
         };
         /** @enum {string} */
+        OccurrenceTrigger: OccurrenceTrigger;
+        /** @enum {string} */
         OccurrenceState: OccurrenceState;
         NullableOccurrence: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             schedule_id: string;
-            /** Format: date-time */
+            trigger: components["schemas"]["OccurrenceTrigger"];
+            /**
+             * Format: date-time
+             * @description Cron due time for a scheduled occurrence, or command acceptance time for a manual occurrence. This is not the execution start time.
+             */
             scheduled_at: string;
             state: components["schemas"]["OccurrenceState"];
             /** Format: date-time */
@@ -968,6 +1000,32 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    RunSchedule: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Nonzero UUID identifying this manual command within the schedule. Retrying the same key never creates another occurrence. Keys do not expire. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The command was stored, or the same command was already accepted. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Occurrence"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     ResetSession: {
         parameters: {
             query?: never;
@@ -1149,6 +1207,10 @@ export enum AuthSessionMode {
     api_only = "api_only",
     anonymous = "anonymous",
     saml = "saml"
+}
+export enum OccurrenceTrigger {
+    scheduled = "scheduled",
+    manual = "manual"
 }
 export enum OccurrenceState {
     pending = "pending",

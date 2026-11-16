@@ -18,7 +18,7 @@ import SelectedServices from '../components/SelectedServices.vue'
 const { t, locale } = useI18n()
 const { timeZone } = useSettings()
 const catalogs = useCatalogs()
-const { data, error, pending, updatedAt, disconnected, refresh, toggle, busy, confirm, execute } = useSchedule()
+const { data, error, pending, updatedAt, disconnected, refresh, toggle, runNow, busy, confirm, execute } = useSchedule()
 const profileDescription = computed(() => catalogs.profiles.data.value?.items.find((item) => item.name === data.value?.profile)?.description)
 const template = useTemplate(() => data.value?.template ?? '')
 </script>
@@ -34,6 +34,7 @@ const template = useTemplate(() => data.value?.template ?? '')
     </div>
     <div v-if="data.can_edit" class="mb-6 flex flex-wrap gap-3">
       <RouterLink class="button-primary" :to="`/schedules/${data.id}/edit`">{{ t('schedule.edit') }}</RouterLink>
+      <button class="button" :disabled="busy" @click="runNow">{{ t('schedule.runNow') }}</button>
       <button class="button" :disabled="busy" @click="toggle">
         {{ data.status === Status.active ? t('schedule.pause') : t('schedule.resume') }}
       </button>

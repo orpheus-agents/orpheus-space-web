@@ -7,13 +7,11 @@ import { schedule, taskID } from '../test/fixtures'
 import { provideAuthSession } from './useAuth'
 import { provideToasts } from './useToasts'
 import { useSchedule } from './useSchedule'
-import { useSchedules } from './useSchedules'
 
 let wrapper: ReturnType<typeof mount>
 afterEach(() => { wrapper?.unmount(); vi.unstubAllGlobals() })
 
-for (const view of ['card', 'list'] as const) {
-  describe(`${view} resume`, () => {
+describe('card resume', () => {
     it.each([
       { status: 422, error: { code: 'validation_error', details: [{ path: ['body', 'services'], code: 'unknown_service' }] }, message: 'A selected service is unavailable. Edit the schedule’s services before resuming.' },
       { status: 422, error: { code: 'validation_error', details: [{ path: ['body', 'template'], code: 'template_inactive' }, { path: ['body', 'services'], code: 'unknown_service' }] }, message: 'The schedule’s template is inactive or no longer registered. Choose an active template before resuming.' },
@@ -24,19 +22,18 @@ for (const view of ['card', 'list'] as const) {
       const task = schedule({ status: Status.paused })
       const fetcher = vi.fn((_url: string, options?: RequestInit) => Promise.resolve(options?.method === 'PATCH'
         ? Response.json({ error }, { status })
-        : Response.json(view === 'card' ? task : { items: [task], next_cursor: null })))
+        : Response.json(task)))
       vi.stubGlobal('fetch', fetcher)
       const router = createRouter({ history: createMemoryHistory(), routes: [
         { name: 'schedules', path: '/schedules', component: { render: () => null } },
         { name: 'schedule', path: '/schedules/:id', component: { render: () => null } },
       ] })
-      await router.push(view === 'card' ? `/schedules/${taskID}` : '/schedules')
+      await router.push(`/schedules/${taskID}`)
       await flushPromises()
       let toggle!: () => Promise<void>
       let notifications!: ReturnType<typeof provideToasts>
       const Child = defineComponent({ setup() {
-        if (view === 'card') toggle = useSchedule().toggle
-        else { const state = useSchedules(); toggle = () => state.toggle(task) }
+        toggle = useSchedule().toggle
         return () => null
       } })
       wrapper = mount(defineComponent({ setup() {
@@ -52,4 +49,3 @@ for (const view of ['card', 'list'] as const) {
       expect(JSON.parse(patch![1]!.body as string)).toEqual({ status: Status.active })
     })
   })
-}

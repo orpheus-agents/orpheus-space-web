@@ -1,4 +1,4 @@
-import { ProfileHarness, SettingsBrowser_auth, type Profiles, type Settings, type Template, type Templates, type Services, SessionMode, Status, OccurrenceState, type Schedule, type Occurrence } from '../api/generated'
+import { ProfileHarness, SettingsBrowser_auth, type Profiles, type Settings, type Template, type Templates, type Services, SessionMode, Status, OccurrenceState, OccurrenceTrigger, type Schedule, type Occurrence } from '../api/generated'
 export const taskID = '11111111-1111-4111-8111-111111111111'
 export const occurrenceID = '22222222-2222-4222-8222-222222222222'
 export const timestamp = '2026-10-01T10:00:00Z'
@@ -30,6 +30,7 @@ export function occurrence(overrides: Partial<Occurrence> = {}): Occurrence {
   return {
     id: occurrenceID,
     schedule_id: taskID,
+    trigger: OccurrenceTrigger.scheduled,
     scheduled_at: timestamp,
     state: OccurrenceState.accepted,
     created_at: timestamp,

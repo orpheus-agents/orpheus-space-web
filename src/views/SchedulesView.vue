@@ -19,7 +19,7 @@ function openSchedule(event: MouseEvent, id: string) {
   void router.push(`/schedules/${id}`)
 }
 const { timeZone } = useSettings()
-const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned, status, cursor, apply, page, toggle, canCreate, busy } =
+const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned, status, cursor, apply, page, canCreate } =
   useSchedules()
 </script>
 <template>
@@ -31,8 +31,8 @@ const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned,
   <form class="panel mb-5 flex flex-wrap items-end gap-4 p-5" @submit.prevent="apply">
     <label class="flex min-w-60 flex-1 flex-col gap-2"><span class="caps text-muted">{{ t('schedule.ownerFilter') }}</span><input v-model="owners" class="field" :disabled="unowned" :placeholder="t('schedule.emailExample')"></label>
     <label class="flex flex-col gap-2"><span class="caps text-muted">{{ t('schedule.status') }}</span><select v-model="status" class="field">
-      <option value="">{{ t('common.all') }}</option>
       <option v-for="item in Object.values(Status)" :key="item" :value="item">{{ t(`status.${item}`) }}</option>
+      <option value="all">{{ t('common.all') }}</option>
     </select></label>
     <label class="flex h-10 items-center gap-2 text-sm"><input v-model="unowned" type="checkbox">{{ t('schedule.sharedOnly') }}</label>
     <button class="button" type="submit">{{ t('common.apply') }}</button>
@@ -53,9 +53,6 @@ const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned,
             <th>{{ t('schedule.lastRun') }}</th>
             <th>{{ t('schedule.next') }}</th>
             <th>{{ t('schedule.timing') }}</th>
-            <th>
-              <span class="sr-only">{{ t('common.actions') }}</span>
-            </th>
           </tr>
         </thead>
         <tbody>
@@ -74,11 +71,6 @@ const { data, error, pending, updatedAt, disconnected, refresh, owners, unowned,
             </td>
             <td>
               <CronDescription :expression="task.cron" /><span class="ml-2 whitespace-nowrap text-xs text-muted">{{ task.timezone }}</span>
-            </td>
-            <td>
-              <button v-if="task.can_edit" class="button" :disabled="busy" @click="toggle(task)">
-                {{ task.status === Status.active ? t('schedule.pause') : t('schedule.resume') }}
-              </button>
             </td>
           </tr>
         </tbody>

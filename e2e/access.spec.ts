@@ -33,12 +33,13 @@ test('members can view all schedules, edit their own and cannot open a foreign e
   const { other } = await fixture(page)
   await page.goto('/schedules')
   await expect(page.getByRole('link', { name: 'New schedule' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toHaveCount(1)
+  await expect(page.locator('tbody').getByRole('button')).toHaveCount(0)
   await page.getByRole('link', { name: other.name }).click()
   await expect(page.getByText('This schedule is available for viewing only.')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Edit schedule' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Reset context' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Run now' })).toHaveCount(0)
   await expect(page.getByText('Summarize incidents')).toBeVisible()
   await page.goto(`/schedules/${other.id}/edit`)
   await expect(page).toHaveURL(new RegExp(`/schedules/${other.id}$`))
@@ -106,10 +107,10 @@ test('users without email can browse but cannot create or edit', async ({ page }
   await expect(page.getByRole('link', { name: 'Other report' })).toBeVisible()
 })
 
-for (const action of ['list pause', 'card reset', 'edit'] as const) {
+for (const action of ['card pause', 'card reset', 'manual run', 'edit'] as const) {
   test(`losing permission during ${action} preserves browsing`, async ({ page }) => {
     const { revoke } = await fixture(page)
-    await page.goto(action === 'list pause' ? '/schedules' : `/schedules/${taskID}${action === 'edit' ? '/edit' : ''}`)
+    await page.goto(`/schedules/${taskID}${action === 'edit' ? '/edit' : ''}`)
     if (action === 'edit') {
       await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible()
       revoke()
@@ -118,6 +119,10 @@ for (const action of ['list pause', 'card reset', 'edit'] as const) {
       await page.getByRole('button', { name: 'Reset context' }).click()
       revoke()
       await page.getByRole('button', { name: 'Confirm', exact: true }).click()
+    } else if (action === 'manual run') {
+      await expect(page.getByRole('button', { name: 'Run now' })).toBeVisible()
+      revoke()
+      await page.getByRole('button', { name: 'Run now' }).click()
     } else {
       await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
       revoke()
@@ -126,6 +131,6 @@ for (const action of ['list pause', 'card reset', 'edit'] as const) {
     await expect(page.getByText('You can only change your own schedules. Your access may have changed.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Pause', exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Confirm', exact: true })).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: action === 'list pause' ? 'Schedules' : 'Daily report', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Daily report', exact: true })).toBeVisible()
   })
 }

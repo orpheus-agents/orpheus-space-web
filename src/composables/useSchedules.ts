@@ -1,16 +1,19 @@
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { get, write, isScheduleForbidden } from '../api/client'
-import { Status, type Schedule } from '../api/generated'
-import { useAction } from './useAction'
-import { useResumeError } from './useResumeError'
+import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
+import { ApiError, get } from '../api/client'
+import { Status } from '../api/generated'
 import { useResource } from './useResource'
-import { useAuthSession, useRefreshAuth } from './useAuth'
+import { useAuthSession } from './useAuth'
+
+function selectedStatus(value: LocationQueryValue | LocationQueryValue[] | undefined) {
+  if (value === undefined) return Status.active
+  if (value === 'all') return 'all'
+  return Object.values(Status).find((item) => item === value) ?? null
+}
 export function useSchedules() {
   const route = useRoute(),
     router = useRouter()
   const session = useAuthSession()
-  const refreshAuth = useRefreshAuth()
   const canCreate = computed(() => session.value?.write_access === true)
   const owners = ref(
     [route.query.owner_email]
@@ -19,20 +22,23 @@ export function useSchedules() {
       .join(', '),
   )
   const unowned = ref(route.query.unowned === 'true')
-  const status = ref(Object.values(Status).find((x) => x === route.query.status) ?? '')
+  const status = ref(selectedStatus(route.query.status))
   const cursor = computed(() => (typeof route.query.cursor === 'string' ? route.query.cursor : undefined))
   const resource = useResource(
-    (signal) =>
-      get('/api/v1/schedules', {
+    (signal) => {
+      const selected = selectedStatus(route.query.status)
+      if (selected === null) throw new ApiError(422)
+      return get('/api/v1/schedules', {
         signal,
         query: {
           owner_email: [route.query.owner_email].flat().filter((x): x is string => typeof x === 'string'),
           unowned: route.query.unowned === 'true' || undefined,
-          status: Object.values(Status).find((x) => x === route.query.status),
+          status: selected === 'all' ? undefined : selected,
           cursor: cursor.value,
           limit: 25,
         },
-      }),
+      })
+    },
     () => (route.name === 'schedules' ? route.fullPath : null),
   )
   watch(unowned, (value) => {
@@ -46,11 +52,9 @@ export function useSchedules() {
         .filter((x): x is string => typeof x === 'string')
         .join(', ')
       unowned.value = query.unowned === 'true'
-      status.value = Object.values(Status).find((x) => x === query.status) ?? ''
+      status.value = selectedStatus(query.status)
     },
   )
-  const action = useAction()
-  const resumeError = useResumeError()
   async function apply() {
     await router.replace({
       query: {
@@ -61,26 +65,12 @@ export function useSchedules() {
               .map((x) => x.trim())
               .filter(Boolean),
         unowned: unowned.value ? 'true' : undefined,
-        status: status.value || undefined,
+        status: status.value,
       },
     })
   }
   async function page(next?: string) {
     await router.push({ query: { ...route.query, cursor: next } })
   }
-  async function toggle(task: Schedule) {
-    if (!task.can_edit) return
-    await action.run(async (signal) => {
-      await write('patch', '/api/v1/schedules/{id}', {
-        signal,
-        path: { id: task.id },
-        body: { status: task.status === Status.active ? Status.paused : Status.active },
-      })
-      await resource.refresh()
-    }, { onError: async (error) => {
-      if (isScheduleForbidden(error)) await Promise.all([resource.refresh(), refreshAuth()])
-      return resumeError(error)
-    } })
-  }
-  return { ...resource, owners, unowned, status, cursor, apply, page, toggle, canCreate, busy: action.busy }
+  return { ...resource, owners, unowned, status, cursor, apply, page, canCreate }
 }

@@ -12,10 +12,11 @@
 Shared agent schedules for [Orpheus Space](https://github.com/orpheus-agents/orpheus-space).
 Vue 3, TypeScript, Vite, Tailwind CSS and Vue Router; English/Russian and light/dark themes.
 
-Create and edit schedules, pause/resume, filter by multiple owner emails or unowned
+Create and edit schedules, pause/resume, filter by activity, multiple owner emails or unowned
 schedules, choose profiles, sandbox templates and services and reset reusable context. The list shows each
 schedule's last run; validation problems from the API appear under their fields.
 All users with Space access can read all schedules and their history/results.
+See [schedule controls](docs/schedules.md) for filters and manual runs.
 SAML administrators configured in Space can manage every schedule; other users
 can create only for themselves and modify only their own schedules. Editing,
 pause/resume, deletion and context reset follow the backend's `can_edit` flag.
