@@ -19,5 +19,5 @@ Creating, editing and resuming schedules require an active template. A standalon
 pause action and deletion remain available when the catalog is unavailable; a
 pause combined with form edits still requires template validation.
 
-During the current rollout, core runtime still reads TOML. A catalog record can
-therefore be selectable here before its name is allowed for new core sessions.
+Core accepts new sessions only for exact names of active templates in the database.
+Deactivating or deleting a template does not affect sessions already accepted.
