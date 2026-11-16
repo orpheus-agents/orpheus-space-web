@@ -1,4 +1,4 @@
-import { ProfileHarness, SettingsBrowser_auth, type Profiles, type Settings, type Template, type Templates, type Services, SessionMode, Status, OccurrenceState, OccurrenceTrigger, type Schedule, type Occurrence } from '../api/generated'
+import { ProfileHarness, SettingsBrowser_auth, type Profiles, type Profile, type Settings, type Template, type Templates, type Services, SessionMode, Status, OccurrenceState, OccurrenceTrigger, type Schedule, type Occurrence } from '../api/generated'
 export const taskID = '11111111-1111-4111-8111-111111111111'
 export const occurrenceID = '22222222-2222-4222-8222-222222222222'
 export const timestamp = '2026-10-01T10:00:00Z'
@@ -50,11 +50,15 @@ export function occurrence(overrides: Partial<Occurrence> = {}): Occurrence {
   }
 }
 
+export function profile(overrides: Partial<Profile> = {}): Profile {
+  return { id: '55555555-5555-4555-8555-555555555555', name: 'default', description: 'General agent', harness: ProfileHarness.codex, model: 'default-model', codex: {}, instructions: '', is_default: true, active: true, account_id: '66666666-6666-4666-8666-666666666666', account_name: 'Fixture account', account_active: true, available: true, ...overrides }
+}
 export function profiles(): Profiles {
-  return { items: [
-    { name: 'default', description: 'General agent', harness: ProfileHarness.codex, model: 'default-model', codex: {}, instructions: '', is_default: true },
-    { name: 'research', description: 'Search and compare sources', harness: ProfileHarness.codex, model: 'research-model', codex: {}, instructions: '', is_default: false },
-  ] }
+  return { items: [profile(), profile({ id: '77777777-7777-4777-8777-777777777777', name: 'research', description: 'Search and compare sources', model: 'research-model', is_default: false })], next_cursor: null, prev_cursor: null }
+}
+export function profilePage(url: string, items = profiles().items): Profiles {
+  const q = new URL(url, 'http://localhost').searchParams
+  return { items: items.filter(p => (!q.has('name') || p.name === q.get('name')) && (!q.has('name_contains') || p.name.toLowerCase().includes(q.get('name_contains')!.toLowerCase())) && (!q.has('active') || String(p.active) === q.get('active')) && (!q.has('available') || String(p.available) === q.get('available'))), next_cursor: null, prev_cursor: null }
 }
 export function template(overrides: Partial<Template> = {}): Template {
   const name = overrides.name ?? 'fixture'
@@ -68,7 +72,7 @@ export function templates(): Templates {
   ], next_cursor: null, prev_cursor: null }
 }
 export function settings(overrides: Partial<Settings> = {}): Settings {
-  return { browser_auth: SettingsBrowser_auth.anonymous, default_template: 'fixture', ...overrides }
+  return { browser_auth: SettingsBrowser_auth.anonymous, default_template: 'fixture', default_profile: 'default', ...overrides }
 }
 /** Answers a template catalog request like Space: exact `name`, `active` and `name_contains` filters over `items`. */
 export function templatePage(url: string, items = templates().items): Templates {

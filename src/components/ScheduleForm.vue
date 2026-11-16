@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, useId } from 'vue'
-import { Clock3, UserRound } from 'lucide-vue-next'
+import { Clock3 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { SessionMode, Status } from '../api/generated'
 import { formatOffset, timeZones } from '../composables/useSettings'
 import { formatDate } from '../format'
 import type { useScheduleEditor } from '../composables/useScheduleEditor'
-import CatalogField from './CatalogField.vue'
+import ProfileField from './ProfileField.vue'
 import ServicesField from './ServicesField.vue'
 import TemplateField from './TemplateField.vue'
 import CronBuilder from './CronBuilder.vue'
@@ -19,7 +19,7 @@ const MarkdownEditor = defineAsyncComponent(() => import('./MarkdownEditor.vue')
 const promptErrorId = useId()
 const zoneId = useId()
 const modelHintId = useId()
-const profileModel = computed(() => editor.catalogs.profiles.data.value?.items.find((item) => item.name === form.profile)?.model)
+const profileModel = computed(() => editor.profile.current.value?.model)
 const zoneOptions = computed(() => timeZones().map((value) => ({ value, label: value })))
 function changeZone(value: string) {
   form.timezone = value
@@ -86,7 +86,10 @@ function changeZone(value: string) {
       <h2 class="panel-title">{{ t('schedule.execution') }}</h2>
       <div class="grid gap-5 sm:grid-cols-2">
         <div class="min-w-0 space-y-5">
-          <CatalogField v-model="form.profile" :label="t('schedule.profile')" :icon="UserRound" :items="editor.catalogs.profiles.data.value?.items ?? null" :unavailable="editor.catalogs.profiles.disconnected.value" :error="fieldErrors.profile" />
+          <ProfileField
+            v-model="form.profile" :current="editor.profile.current.value" :state="editor.profile.state.value"
+            :resolving-default="editor.profile.resolvingDefault.value" :options="editor.profile.options" :error="fieldErrors.profile"
+          />
           <div>
             <label class="block"><span class="mb-2 block caps text-muted">{{ t('schedule.modelOptional') }}</span><input v-model="form.model" :aria-describedby="modelHintId" class="field w-full" :placeholder="profileModel ? t('schedule.modelFromProfile', { model: profileModel }) : t('schedule.modelDefault')"><FieldError :message="fieldErrors.model" /></label>
             <p :id="modelHintId" class="mt-2 text-xs text-muted">{{ t('schedule.modelHint') }}</p>

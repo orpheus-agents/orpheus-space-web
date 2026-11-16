@@ -6,6 +6,7 @@ import { SessionMode, Status, type CreateSchedule } from '../api/generated'
 import { useCatalogs } from './useCatalogs'
 import { useResource } from './useResource'
 import { useTemplate, useTemplateOptions } from './useTemplates'
+import { useProfile, useProfileOptions } from './useProfiles'
 import { useSettings } from './useSettings'
 import { useAction } from './useAction'
 import { useToasts } from './useToasts'
@@ -15,6 +16,7 @@ const FIELDS = ['name', 'prompt', 'cron', 'timezone', 'status', 'model', 'owner_
 export type Field = (typeof FIELDS)[number]
 /** Space explains why a stored template cannot be selected; other problems use the field's own message. */
 const TEMPLATE_PROBLEMS: Partial<Record<string, string>> = { template_inactive: 'template.state.inactive', template_not_found: 'template.state.missing' }
+const PROFILE_PROBLEMS: Partial<Record<string, string>> = { profile_inactive: 'profile.state.inactive', profile_not_found: 'profile.state.missing', account_inactive: 'profile.state.accountInactive' }
 
 export function useScheduleEditor() {
   const route = useRoute(),
@@ -43,16 +45,11 @@ export function useScheduleEditor() {
   const catalogs = useCatalogs()
   const storedServices = ref<string[]>([])
   let originalSelection: { profile: string; template: string } | undefined
-  let profileInitialized = false
-  watch(catalogs.profiles.data, (data) => {
-    if (id || profileInitialized || !data) return
-    profileInitialized = true
-    if (!form.profile) form.profile = data.items.find((item) => item.is_default)?.name ?? ''
-  })
   // A new schedule starts with the configured default only after an exact check finds it active;
   // there is no fallback to the first available template. One lookup serves the default and the choice.
   const resolvingDefault = ref(!id)
-  const settings = useResource((signal) => get('/api/v1/schedules/settings', { signal }), () => (resolvingDefault.value ? 'settings' : null), { interval: 30_000 })
+  const resolvingProfile = ref(!id)
+  const settings = useResource((signal) => get('/api/v1/schedules/settings', { signal }), () => (resolvingDefault.value || resolvingProfile.value ? 'settings' : null), { interval: 30_000 })
   const defaultTemplate = computed(() => (resolvingDefault.value ? (settings.data.value?.default_template ?? '') : ''))
   const lookup = useTemplate(() => form.template || defaultTemplate.value)
   watch([lookup.state, () => form.template], ([state, template]) => {
@@ -73,6 +70,26 @@ export function useScheduleEditor() {
     pending: computed(() => lookup.pending.value || (resolvingDefault.value && settings.pending.value)),
     refresh: () => Promise.all([lookup.refresh(), settings.refresh(), template.options.reload()]),
   }
+  const defaultProfile = computed(() => resolvingProfile.value ? (settings.data.value?.default_profile ?? '') : '')
+  const profileLookup = useProfile(() => form.profile || defaultProfile.value)
+  watch([profileLookup.state, () => form.profile], ([state, name]) => {
+    if (!resolvingProfile.value) return
+    if (name) resolvingProfile.value = false
+    else if (defaultProfile.value && ['inactive', 'accountInactive', 'missing'].includes(state)) resolvingProfile.value = false
+    else if (defaultProfile.value && state === 'active') {
+      form.profile = defaultProfile.value
+      resolvingProfile.value = false
+    }
+  })
+  const profile = {
+    current: computed(() => form.profile ? profileLookup.profile.value : null),
+    state: computed(() => form.profile ? profileLookup.state.value : 'empty'),
+    resolvingDefault: resolvingProfile,
+    options: useProfileOptions(),
+    disconnected: computed(() => profileLookup.disconnected.value || settings.disconnected.value),
+    pending: computed(() => profileLookup.pending.value || (resolvingProfile.value && settings.pending.value)),
+    refresh: () => Promise.all([profileLookup.refresh(), settings.refresh(), profile.options.reload()]),
+  }
   /** Server-side validation problems by field; the API names the field, the dictionary explains it. */
   const fieldErrors = reactive<Partial<Record<Field, string>>>({})
   const error = shallowRef<unknown>(null),
@@ -91,9 +108,10 @@ export function useScheduleEditor() {
     for (const detail of cause.problem?.details ?? []) {
       const field = fields.find((name) => detail.path[0] === 'body' && detail.path[1] === name)
       if (!field) continue
-      const specific = field === 'template' ? TEMPLATE_PROBLEMS[detail.code] : undefined
+      const specific = field === 'template' ? TEMPLATE_PROBLEMS[detail.code] : field === 'profile' ? PROFILE_PROBLEMS[detail.code] : undefined
       // The selection changed in Orpheus after the last check: show its current state too.
       if (field === 'template') void lookup.refresh()
+      if (field === 'profile') void profileLookup.refresh()
       fieldErrors[field] = specific ? t(specific) : te(`validation.${field}`) ? t(`validation.${field}`) : t(`validation.${detail.code}`)
       matched = true
     }
@@ -190,7 +208,9 @@ export function useScheduleEditor() {
     // Saving waits for an exact check of the selected template: the server rejects inactive and missing ones.
     const state = template.state.value
     if (form.template && state !== 'active') fieldErrors.template = t(state === 'loading' ? 'template.wait' : `template.state.${state}`)
-    if (!form.profile || !form.template || state !== 'active') { push(t('validation.failed')); return }
+    const profileState = profile.state.value
+    if (form.profile && profileState !== 'active') fieldErrors.profile = t(profileState === 'loading' ? 'profile.wait' : `profile.state.${profileState}`)
+    if (!form.profile || !form.template || state !== 'active' || profileState !== 'active') { push(t('validation.failed')); return }
     const body = payload()
     const serialized = JSON.stringify(body)
     await action.run(
@@ -232,6 +252,7 @@ export function useScheduleEditor() {
     canSave,
     catalogs,
     template,
+    profile,
     storedServices,
     form,
     fieldErrors,

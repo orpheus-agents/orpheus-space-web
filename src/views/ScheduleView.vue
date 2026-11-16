@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Status, SessionMode } from '../api/generated'
 import { useSchedule } from '../composables/useSchedule'
 import { useSettings } from '../composables/useSettings'
 import { formatDate } from '../format'
 import { useCatalogs } from '../composables/useCatalogs'
+import { useProfile } from '../composables/useProfiles'
 import { useTemplate } from '../composables/useTemplates'
 import CronDescription from '../components/CronDescription.vue'
 import DescribedName from '../components/DescribedName.vue'
@@ -19,7 +19,7 @@ const { t, locale } = useI18n()
 const { timeZone } = useSettings()
 const catalogs = useCatalogs()
 const { data, error, pending, updatedAt, disconnected, refresh, toggle, runNow, busy, confirm, execute } = useSchedule()
-const profileDescription = computed(() => catalogs.profiles.data.value?.items.find((item) => item.name === data.value?.profile)?.description)
+const profile = useProfile(() => data.value?.profile ?? '')
 const template = useTemplate(() => data.value?.template ?? '')
 </script>
 <template>
@@ -28,8 +28,8 @@ const template = useTemplate(() => data.value?.template ?? '')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
       <h1 class="section-title break-words">{{ data.name }}</h1>
       <RefreshStatus
-        :updated-at="updatedAt" :disconnected="disconnected || catalogs.disconnected.value || template.disconnected.value"
-        :pending="pending || catalogs.pending.value || template.pending.value" @refresh="refresh(); catalogs.refresh(); template.refresh()"
+        :updated-at="updatedAt" :disconnected="disconnected || catalogs.disconnected.value || template.disconnected.value || profile.disconnected.value"
+        :pending="pending || catalogs.pending.value || template.pending.value || profile.pending.value" @refresh="refresh(); catalogs.refresh(); template.refresh(); profile.refresh()"
       />
     </div>
     <div v-if="data.can_edit" class="mb-6 flex flex-wrap gap-3">
@@ -68,7 +68,7 @@ const template = useTemplate(() => data.value?.template ?? '')
         </div>
         <div>
           <dt class="caps mb-2 text-muted">{{ t('schedule.profile') }}</dt>
-          <dd class="break-words"><DescribedName :name="data.profile" :description="profileDescription" /></dd>
+          <dd class="break-words"><DescribedName :name="data.profile" :description="profile.profile.value?.description" /></dd>
         </div>
         <div>
           <dt class="caps mb-2 text-muted">{{ t('schedule.template') }}</dt>

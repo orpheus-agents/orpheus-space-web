@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { profiles, settings, template, templatePage, services, schedule, occurrence, taskID, occurrenceID, timestamp } from '../src/test/fixtures'
+import { profilePage, profile, profiles, settings, template, templatePage, services, schedule, occurrence, taskID, occurrenceID, timestamp } from '../src/test/fixtures'
 import { OccurrenceState, OccurrenceTrigger, Status } from '../src/api/generated'
 
 test('new schedule uses the signed-in email and handles an empty service catalog', async ({ page }) => {
@@ -10,7 +10,7 @@ test('new schedule uses the signed-in email and handles an empty service catalog
       mode: 'saml', authenticated: true, read_access: true, write_access: true, can_manage_all: true,
       user: { subject: 'operator', display_name: 'Operator', email: 'operator@example.com' }, expires_at: timestamp,
     } })
-    if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+    if (path.endsWith('/profiles')) return route.fulfill({ json: profilePage(route.request().url()) })
     if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(route.request().url()) })
     if (path.endsWith('/services')) return route.fulfill({ json: { items: [] } })
@@ -42,7 +42,7 @@ test('list, editing, history and automatic result work in both themes', async ({
       return route.fulfill({
         json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null },
       })
-    if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+    if (path.endsWith('/profiles')) return route.fulfill({ json: profilePage(route.request().url()) })
     if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(route.request().url()) })
     if (path.endsWith('/services')) return route.fulfill({ json: services() })
@@ -134,7 +134,7 @@ for (const locale of ['en', 'ru'] as const) {
     await page.route('**/api/v1/**', (route) => {
       const req = route.request(), path = new URL(req.url()).pathname
       if (path.endsWith('/auth/session')) return route.fulfill({ json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null } })
-      if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+      if (path.endsWith('/profiles')) return route.fulfill({ json: profilePage(route.request().url()) })
       if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(req.url()) })
       if (path.endsWith('/services')) return route.fulfill({ json: services() })
       if (path.endsWith('/run')) {
@@ -229,7 +229,7 @@ test('schedule prompts render Markdown and front matter while preserving the edi
     if (path.endsWith('/auth/session')) return route.fulfill({ json: {
       mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null,
     } })
-    if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+    if (path.endsWith('/profiles')) return route.fulfill({ json: profilePage(route.request().url()) })
     if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(route.request().url()) })
     if (path.endsWith('/services')) return route.fulfill({ json: services() })
@@ -317,7 +317,7 @@ test('readable schedules, aligned list data and clickable history rows', async (
     if (path.endsWith('/auth/session')) return route.fulfill({ json: {
       mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null,
     } })
-    if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+    if (path.endsWith('/profiles')) return route.fulfill({ json: profilePage(route.request().url()) })
     if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings() })
     if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(route.request().url()) })
     if (path.endsWith('/services')) return route.fulfill({ json: services() })
@@ -384,7 +384,7 @@ test('catalog choices support descriptions, keyboard search and preserved offlin
       if (offline) return route.fulfill({ status: 503, json: { error: { code: 'core_unavailable' } } })
       const data = profiles()
       if (removed) data.items = data.items.filter((item) => item.is_default)
-      return route.fulfill({ json: data })
+      return route.fulfill({ json: profilePage(route.request().url(), data.items) })
     }
     if (path.endsWith('/services')) return route.fulfill(offline ? { status: 503, json: { error: { code: 'core_unavailable' } } } : { json: services() })
     if (path.endsWith('/occurrences')) return route.fulfill({ json: { items: [], next_cursor: null } })
@@ -412,7 +412,11 @@ test('catalog choices support descriptions, keyboard search and preserved offlin
   await expect(page.getByText('Reconnecting…')).toBeVisible()
   await expect(page.getByRole('listbox', { name: 'Profile', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Profile', exact: true })).toBeEnabled()
-  await page.getByRole('searchbox', { name: 'Search', exact: true }).fill('sources')
+  offline = false
+  await page.getByRole('searchbox', { name: 'Search', exact: true }).fill('research')
+  await page.clock.fastForward(300)
+  await expect(page.getByRole('option', { name: /research/ })).toBeVisible()
+  await page.keyboard.press('ArrowDown')
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
   await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('research')
@@ -436,7 +440,7 @@ test('catalog choices support descriptions, keyboard search and preserved offlin
   removed = true
   retired = true
   await page.getByRole('link', { name: 'Edit schedule' }).click()
-  await expect(page.getByText('This option is no longer available.', { exact: false })).toHaveCount(1)
+  await expect(page.getByText('This profile is no longer registered.', { exact: false })).toHaveCount(1)
   await expect(page.getByText('Inactive', { exact: true })).toBeVisible()
   await expect(page.getByText('Choose an active template to save changes.', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Sandbox template', exact: true })).toHaveText('reports:v2')
@@ -464,14 +468,20 @@ test('catalog choices support descriptions, keyboard search and preserved offlin
   await page.reload()
   await expect(page.getByText('Reconnecting…')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('research')
-  await expect(page.getByRole('button', { name: 'Profile', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Profile', exact: true })).toBeEnabled()
   await page.getByLabel('Name', { exact: true }).fill('Edited offline')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Could not check the profile.' })).toBeVisible()
+  expect(patches).toHaveLength(1)
+  expect(page.url()).toContain('/edit')
+  offline = false
+  removed = false
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  await expect(page.getByLabel('Model (optional)', { exact: true })).toHaveAttribute('placeholder', 'From the profile: research-model')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Edited offline' })).toBeVisible()
   expect(patches.at(-1)).not.toHaveProperty('profile')
   expect(patches.at(-1)).not.toHaveProperty('template')
-  await expect(page.getByText('research', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'research', exact: true })).toHaveCount(0)
   templatesOffline = true
   await page.getByRole('link', { name: 'Edit schedule' }).click()
   await expect(page.getByText('Could not check the template. You can save once Orpheus responds.', { exact: true })).toBeVisible()
@@ -500,7 +510,7 @@ test('template choices load more pages, search the whole catalog and keep the de
       const next = cursor + 25 < matching.length ? String(cursor + 25) : null
       return route.fulfill({ json: { items: matching.slice(cursor, cursor + 25), next_cursor: next, prev_cursor: null } })
     }
-    if (path.endsWith('/profiles')) return route.fulfill({ json: profiles() })
+    if (path.endsWith('/profiles')) return route.fulfill({ json: profilePage(route.request().url()) })
     if (path.endsWith('/services')) return route.fulfill({ json: services() })
     return route.fulfill({ json: schedule() })
   })
@@ -535,4 +545,60 @@ test('template choices load more pages, search the whole catalog and keep the de
   await page.screenshot({ path: 'test-results/template-search-light.png', fullPage: true })
   await list.getByRole('option', { name: 'tpl-57' }).click()
   await expect(field).toHaveText('tpl-57')
+})
+
+test('profile choices load more pages, search the whole catalog and keep the default outside the first page', async ({ page }) => {
+  const names = Array.from({ length: 60 }, (_, index) => `prf-${String(index).padStart(2, '0')}`)
+  const catalog = [...names.map((name, index) => profile({ id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`, name, description: null, is_default: false })),
+    profile({ id: '55555555-5555-4555-8555-555555555555', name: 'zz-default', description: 'Configured default', is_default: true })]
+  const requests: URLSearchParams[] = []
+  let failMore = false
+  await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
+  await page.route('**/api/v1/**', (route) => {
+    const url = new URL(route.request().url()), path = url.pathname
+    if (path.endsWith('/auth/session')) return route.fulfill({ json: { mode: 'anonymous', authenticated: false, read_access: true, write_access: true, can_manage_all: true, user: null, expires_at: null } })
+    if (path.endsWith('/schedules/settings')) return route.fulfill({ json: settings({ default_profile: 'zz-default' }) })
+    if (path.endsWith('/profiles')) {
+      requests.push(url.searchParams)
+      const matching = profilePage(route.request().url(), catalog).items
+      const cursor = Number(url.searchParams.get('cursor') ?? 0)
+      if (cursor && failMore) return route.fulfill({ status: 503, json: { error: { code: 'core_unavailable' } } })
+      const next = cursor + 25 < matching.length ? String(cursor + 25) : null
+      return route.fulfill({ json: { items: matching.slice(cursor, cursor + 25), next_cursor: next, prev_cursor: null } })
+    }
+    if (path.endsWith('/templates')) return route.fulfill({ json: templatePage(route.request().url()) })
+    if (path.endsWith('/services')) return route.fulfill({ json: services() })
+    return route.fulfill({ json: schedule() })
+  })
+  await page.goto('/schedules/new')
+  const field = page.getByRole('button', { name: 'Profile', exact: true })
+  await expect(field).toHaveText('zz-default')
+  await expect(page.getByText('Configured default', { exact: true })).toBeVisible()
+  expect(requests.some((query) => query.get('name') === 'zz-default' && !query.has('available'))).toBe(true)
+  await field.click()
+  const list = page.getByRole('listbox', { name: 'Profile', exact: true })
+  await expect(list.getByRole('option')).toHaveCount(26)
+  await expect(list.getByRole('option').first()).toContainText('zz-default')
+  // Tab reaches the load-more button; bringing it into view means the reader is at the bottom, so the next page loads.
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: 'Show more', exact: true })).toBeFocused()
+  await expect(list.getByRole('option')).toHaveCount(51)
+  failMore = true
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('Could not load more profiles. Try again.', { exact: true })).toBeVisible()
+  await expect(list.getByRole('option')).toHaveCount(51)
+  failMore = false
+  await page.getByRole('button', { name: 'Show more', exact: true }).click()
+  await expect(list.getByRole('option')).toHaveCount(61)
+  await expect(page.getByRole('button', { name: 'Show more', exact: true })).toHaveCount(0)
+  await page.getByRole('searchbox', { name: 'Search', exact: true }).fill('PRF-5')
+  // Ten matches (prf-50 … prf-59) plus the pinned current template, which never matches the search.
+  await expect(list.getByRole('option')).toHaveCount(11)
+  const search = requests.at(-1)!
+  expect(search.get('name_contains')).toBe('PRF-5')
+  expect(search.get('available')).toBe('true')
+  expect(search.has('cursor')).toBe(false)
+  await page.screenshot({ path: 'test-results/profile-search-light.png', fullPage: true })
+  await list.getByRole('option', { name: 'prf-57' }).click()
+  await expect(field).toHaveText('prf-57')
 })

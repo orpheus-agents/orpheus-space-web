@@ -53,8 +53,8 @@ npm run stack:start
 ```
 
 The disposable stack builds the pinned Space commit, migrates an isolated Postgres
-and serves the production nginx frontend. Orpheus v0.13.0 provides real profile and
-template catalogs, using a separate disposable database with seeded template records. No workers, AgentBox
+and serves the production nginx frontend. Orpheus provides real profile and
+template catalogs, using a separate disposable database with seeded accounts, profiles and templates. No workers, AgentBox
 or model credentials are needed. Fixtures contain public test keys only. `npm run stack:stop`
 stops the stack and discards its temporary database.
 

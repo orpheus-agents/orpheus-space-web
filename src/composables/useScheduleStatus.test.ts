@@ -15,9 +15,10 @@ describe('card resume', () => {
     it.each([
       { status: 422, error: { code: 'validation_error', details: [{ path: ['body', 'services'], code: 'unknown_service' }] }, message: 'A selected service is unavailable. Edit the schedule’s services before resuming.' },
       { status: 422, error: { code: 'validation_error', details: [{ path: ['body', 'template'], code: 'template_inactive' }, { path: ['body', 'services'], code: 'unknown_service' }] }, message: 'The schedule’s template is inactive or no longer registered. Choose an active template before resuming.' },
-      { status: 503, error: { code: 'core_unavailable' }, message: 'Cannot check the template and services while Orpheus is unavailable. Try resuming later.' },
+      { status: 503, error: { code: 'core_unavailable' }, message: 'Cannot check the profile, template and services while Orpheus is unavailable. Try resuming later.' },
       { status: 422, error: { code: 'validation_error', details: [{ path: ['body', 'status'], code: 'invalid' }] }, message: 'Could not load data' },
       { status: 503, error: { code: 'unavailable' }, message: 'Could not load data' },
+      { status: 422, error: { code: 'validation_error', details: [{ path: ['body', 'profile'], code: 'account_inactive' }] }, message: 'The schedule’s profile or LLM account is inactive or missing. Choose an available profile before resuming.' },
     ])('explains $status $error.code without changing the stored status', async ({ status, error, message }) => {
       const task = schedule({ status: Status.paused })
       const fetcher = vi.fn((_url: string, options?: RequestInit) => Promise.resolve(options?.method === 'PATCH'

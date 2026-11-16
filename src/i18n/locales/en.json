@@ -241,7 +241,7 @@
     "unavailable": "Could not load the choices. Try again later.",
     "loading": "Loading choices…",
     "chooseHint": "No default is available. Choose an option.",
-    "resumeOffline": "Cannot check the template and services while Orpheus is unavailable. Try resuming later."
+    "resumeOffline": "Cannot check the profile, template and services while Orpheus is unavailable. Try resuming later."
   },
   "template": {
     "inactive": "Inactive",
@@ -266,5 +266,21 @@
     "emptyCatalog": "No services configured",
     "emptySelection": "Not selected",
     "resumeInvalid": "A selected service is unavailable. Edit the schedule’s services before resuming."
+  },
+  "profile": {
+    "inactive": "Inactive",
+    "more": "Show more",
+    "moreFailed": "Could not load more profiles. Try again.",
+    "wait": "Wait until the profile is checked, then save.",
+    "resumeInvalid": "The schedule’s profile or LLM account is inactive or missing. Choose an available profile before resuming.",
+    "state": {
+      "loading": "Checking the profile…",
+      "unavailable": "Could not check the profile. You can save once Orpheus responds.",
+      "inactive": "Choose an active profile to save changes.",
+      "missing": "This profile is no longer registered. Choose an available one to save changes.",
+      "accountInactive": "The profile’s LLM account is inactive. Choose an available profile to save changes.",
+      "empty": "Choose a profile."
+    },
+    "accountInactive": "Account inactive"
   }
 }
