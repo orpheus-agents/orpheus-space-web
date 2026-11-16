@@ -55,7 +55,10 @@ export type paths = {
             path?: never;
             cookie?: never;
         };
-        /** Get Orpheus profiles and the creation default */
+        /**
+         * Get a page of Orpheus model profiles
+         * @description Returns active and inactive profiles. Use available=true for selection and an exact name without availability filters for a stored choice. Name filters are mutually exclusive; cursors are bound to the filters.
+         */
         get: operations["GetProfiles"];
         put?: never;
         post?: never;
@@ -368,11 +371,19 @@ export type components = {
             items: components["schemas"]["Service"][];
         };
         Profile: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            account_id: string;
+            account_name: string;
+            account_active: boolean;
+            active: boolean;
+            available: boolean;
             name: string;
             description: string | null;
             /** @enum {string} */
             harness: ProfileHarness;
-            model: string | null;
+            model: string;
             codex: components["schemas"]["CodexProfile"];
             instructions: string;
             is_default: boolean;
@@ -387,6 +398,8 @@ export type components = {
             service_tier?: string;
         };
         Profiles: {
+            next_cursor: string | null;
+            prev_cursor: string | null;
             items: components["schemas"]["Profile"][];
         };
         Template: {
@@ -405,7 +418,7 @@ export type components = {
             items: components["schemas"]["Template"][];
         };
         CreateSchedule: {
-            /** @description Exact Orpheus profile name; creation uses the configured default when omitted. */
+            /** @description Exact Orpheus profile name; creation uses the configured default when omitted. Every save except a pure pause requires an active profile and account. */
             profile?: string;
             /** @description Exact Orpheus template name; creation uses the configured default when omitted. */
             template?: string;
@@ -473,6 +486,8 @@ export type components = {
             next_cursor: string | null;
         };
         Settings: {
+            /** @description Configured creation default, independent of catalog filters and pagination. Resolve the exact name before automatically selecting it. */
+            default_profile: string;
             /** @description Configured creation default. Resolve it with GET /api/v1/templates?name=... without an active filter; it may be absent or inactive. */
             default_template: string;
             /** @enum {string} */
@@ -789,7 +804,16 @@ export interface operations {
     };
     GetProfiles: {
         parameters: {
-            query?: never;
+            query?: {
+                active?: boolean;
+                available?: boolean;
+                /** @description Exact case-sensitive profile name. */
+                name?: string;
+                /** @description Literal case-insensitive substring of the name. */
+                name_contains?: string;
+                limit?: number;
+                cursor?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

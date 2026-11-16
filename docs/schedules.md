@@ -21,3 +21,16 @@ entry. It does not repeat an earlier reporting period.
 If the request fails, retry in the same open card to reuse its idempotency key.
 Reloading or leaving the card discards that pending key. Check history before
 requesting another run after reopening the card.
+
+## Profiles and templates
+
+Profile choices use server-side search and pagination. The configured default is
+resolved by its exact name, even when it is outside the first page. A profile is
+available only while both it and its LLM account are active. Existing choices
+stay visible when unavailable or removed. Select an available profile and an
+active template before saving or resuming. Pausing and deleting remain available.
+
+Moving a profile to another account in Orpheus changes new sessions. An existing
+reusable session keeps its original account and execution settings. Use **Reset
+context** when the next run should use the updated profile. Model overrides remain
+part of the schedule.

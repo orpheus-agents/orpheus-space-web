@@ -5,7 +5,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { provideToasts } from './useToasts'
 import { useScheduleEditor } from './useScheduleEditor'
 import { useSettings } from './useSettings'
-import { profiles, template, templatePage, templates, services, schedule } from '../test/fixtures'
+import { profiles, profile, profilePage, settings, template, templatePage, templates, services, schedule } from '../test/fixtures'
 import { AuthSessionMode, SettingsBrowser_auth, type Profiles, type Templates, type AuthSession, type Services } from '../api/generated'
 import { provideAuthSession } from './useAuth'
 import ScheduleForm from '../components/ScheduleForm.vue'
@@ -108,7 +108,7 @@ it('explains deletion instead of ownership when an editor URL points to a delete
   await state.load()
   expect(notifications.toasts.value.at(-1)?.message).toBe('This schedule has been deleted. Its history is retained.')
 })
-async function setup(edit = false, email: string | null = null, catalogServices: Services | null = services(), renderForm = false, catalogs: { profiles: Profiles | null; templates: Templates | null; defaultTemplate?: string } = { profiles: profiles(), templates: templates() }) {
+async function setup(edit = false, email: string | null = null, catalogServices: Services | null = services(), renderForm = false, catalogs: { profiles: Profiles | null; templates: Templates | null; defaultTemplate?: string; defaultProfile?: string } = { profiles: profiles(), templates: templates() }) {
   const refreshAuth = vi.fn(async () => true)
   const session = shallowRef<AuthSession>({
     mode: AuthSessionMode.saml, authenticated: true, read_access: true, write_access: true, can_manage_all: true,
@@ -116,12 +116,12 @@ async function setup(edit = false, email: string | null = null, catalogServices:
   })
   const fetcher = vi.fn((url: string) => {
     if (url.endsWith('/services')) return Promise.resolve(Response.json(catalogServices ?? { error: { code: 'core_unavailable' } }, { status: catalogServices ? 200 : 503 }))
-    if (url.endsWith('/schedules/settings')) return Promise.resolve(Response.json({ browser_auth: SettingsBrowser_auth.saml, default_template: catalogs.defaultTemplate ?? 'fixture' }))
+    if (url.endsWith('/schedules/settings')) return Promise.resolve(Response.json({ browser_auth: SettingsBrowser_auth.saml, default_template: catalogs.defaultTemplate ?? 'fixture', default_profile: catalogs.defaultProfile ?? 'default' }))
     if (url.includes('/templates')) {
       return Promise.resolve(catalogs.templates ? Response.json(templatePage(url, catalogs.templates.items)) : Response.json({ error: { code: 'core_unavailable' } }, { status: 503 }))
     }
-    if (url.endsWith('/profiles')) {
-      return Promise.resolve(Response.json(catalogs.profiles ?? { error: { code: 'core_unavailable' } }, { status: catalogs.profiles ? 200 : 503 }))
+    if (url.includes('/profiles')) {
+      return Promise.resolve(Response.json((catalogs.profiles ? profilePage(url, catalogs.profiles.items) : null) ?? { error: { code: 'core_unavailable' } }, { status: catalogs.profiles ? 200 : 503 }))
     }
     return Promise.resolve(Response.json(schedule()))
   })
@@ -170,7 +170,7 @@ it('prefills the owner once for new schedules, leaving edits and cleared values 
   const edit = await setup(true, 'operator@example.com')
   expect(edit.state.form.owner_email).toBe('alice@example.com')
   edit.fetcher.mockImplementation((url: string) => Promise.resolve(Response.json(
-    url.endsWith('/profiles') ? profiles() : url.includes('/templates') ? templatePage(url) : url.endsWith('/services') ? services() : schedule({ owner_email: null }),
+    url.includes('/profiles') ? profilePage(url) : url.includes('/templates') ? templatePage(url) : url.endsWith('/services') ? services() : schedule({ owner_email: null }),
   )))
   await edit.state.load()
   expect(edit.state.form.owner_email).toBe('')
@@ -335,7 +335,7 @@ it('prefills catalog defaults once and preserves choices and model overrides on 
 it('requires an explicit choice when a catalog has no default, without inventing a fallback', async () => {
   const choices = profiles()
   choices.items.forEach((item) => item.is_default = false)
-  const { state, fetcher } = await setup(false, null, services(), false, { profiles: choices, templates: templates() })
+  const { state, fetcher } = await setup(false, null, services(), false, { profiles: choices, templates: templates(), defaultProfile: 'missing' })
   expect(state.form.profile).toBe('')
   expect(state.form.template).toBe('fixture')
   state.form.prompt = 'Work'
@@ -352,30 +352,54 @@ it('recovers initially unavailable catalogs independently without overwriting ed
   expect(state.form.profile).toBe('')
   expect(state.form.template).toBe('fixture')
   state.form.template = 'reports:v2'
-  fetcher.mockImplementation((url: string) => Promise.resolve(Response.json(url.endsWith('/profiles') ? profiles() : url.endsWith('/services') ? services() : templatePage(url))))
-  await state.catalogs.refresh()
+  fetcher.mockImplementation((url: string) => Promise.resolve(Response.json(url.includes('/profiles') ? profilePage(url) : url.endsWith('/services') ? services() : url.endsWith('/settings') ? settings() : templatePage(url))))
+  await state.profile.refresh()
+  await flushPromises()
   expect(state.form.profile).toBe('default')
   expect(state.form.template).toBe('reports:v2')
 })
 
-it('edits a stored profile offline and sends only changed selections', async () => {
+it('keeps an unchecked profile and blocks saving until the exact catalog check succeeds', async () => {
   const { state, fetcher } = await setup(true, null, services(), false, { profiles: null, templates: templates() })
   expect(state.form.profile).toBe('default')
-  expect(state.form.template).toBe('fixture')
-  const bodies: Record<string, unknown>[] = []
-  fetcher.mockImplementation((_url: string, request?: RequestInit) => {
-    bodies.push(JSON.parse(request!.body as string))
-    return Promise.resolve(Response.json(schedule()))
-  })
   state.form.prompt = 'Updated'
+  fetcher.mockClear()
+  await state.save()
+  expect(fetcher).not.toHaveBeenCalled()
+  expect(state.fieldErrors.profile).toContain('Could not check the profile.')
+  const bodies: Record<string, unknown>[] = []
+  fetcher.mockImplementation((url: string, request?: RequestInit) => {
+    if (request?.method) { bodies.push(JSON.parse(request.body as string)); return Promise.resolve(Response.json(schedule())) }
+    return Promise.resolve(Response.json(url.includes('/profiles') ? profilePage(url) : settings()))
+  })
+  await state.profile.refresh()
   await state.save()
   expect(bodies[0]).not.toHaveProperty('profile')
   expect(bodies[0]).not.toHaveProperty('template')
   state.form.profile = 'research'
   state.form.model = 'explicit-model'
+  await flushPromises()
   await state.save()
   expect(bodies[1]).toMatchObject({ profile: 'research', model: 'explicit-model' })
-  expect(bodies[1]).not.toHaveProperty('template')
+})
+
+it.each([
+  [profile({ active: false, available: false }), 'inactive'],
+  [profile({ account_active: false, available: false }), 'accountInactive'],
+  [undefined, 'missing'],
+] as const)('preserves unavailable profiles but refuses edits or default selection: %s', async (record, expected) => {
+  const page = { items: record ? [record] : [], next_cursor: null, prev_cursor: null }
+  const edit = await setup(true, null, services(), true, { profiles: page, templates: templates() })
+  expect(edit.state.profile.state.value).toBe(expected)
+  expect(edit.state.form.profile).toBe('default')
+  edit.fetcher.mockClear()
+  await edit.state.save()
+  expect(edit.fetcher).not.toHaveBeenCalled()
+  expect(edit.state.fieldErrors.profile).toBeTruthy()
+  wrapper.unmount()
+  const create = await setup(false, null, services(), false, { profiles: page, templates: templates() })
+  expect(create.state.form.profile).toBe('')
+  expect(create.state.profile.resolvingDefault.value).toBe(false)
 })
 
 it('waits for a confirmed active template before saving and keeps the stored value', async () => {

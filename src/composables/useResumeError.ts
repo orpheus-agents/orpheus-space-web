@@ -9,6 +9,7 @@ export function useResumeError() {
     if (error.status === 503 && error.problem?.code === 'core_unavailable') return t('catalog.resumeOffline')
     if (error.status !== 422) return
     const fields = new Set((error.problem?.details ?? []).filter((detail) => detail.path[0] === 'body').map((detail) => detail.path[1]))
+    if (fields.has('profile')) return t('profile.resumeInvalid')
     if (fields.has('template')) return t('template.resumeInvalid')
     if (fields.has('services')) return t('services.resumeInvalid')
   }

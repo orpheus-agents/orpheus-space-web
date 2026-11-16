@@ -1,18 +1,7 @@
-[profiles.default]
-description = "General agent"
-harness = "codex"
-model = "fixture-model"
-[profiles.default.auth]
-mode = "api_key"
-api_key_env = "OPENAI_API_KEY"
-
-[profiles.research]
-description = "Search and compare sources"
-harness = "codex"
-model = "research-model"
-[profiles.research.auth]
-mode = "api_key"
-api_key_env = "OPENAI_API_KEY"
+[credential_stores.fixture]
+type = "s3"
+bucket = "unused-fixture"
+region = "us-east-1"
 
 [services.gitlab]
 name = "GitLab"

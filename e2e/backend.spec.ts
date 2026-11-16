@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 const saml = !!process.env.INTEGRATION_SAML
 test.describe.configure({ mode: 'serial' })
 
-test('real catalogs, nginx and Space enforce template validation and allow offline pause and delete', async ({ page, request, baseURL }) => {
+test('real catalogs, nginx and Space enforce catalog validation and allow offline pause and delete', async ({ page, request, baseURL }) => {
   test.setTimeout(90_000)
   await page.addInitScript(() => localStorage.setItem('orpheus_locale', 'en'))
   await page.goto('/schedules/new')
@@ -20,7 +20,9 @@ test('real catalogs, nginx and Space enforce template validation and allow offli
   await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('default')
   await expect(page.getByRole('button', { name: 'Sandbox template', exact: true })).toHaveText('fixture')
   await page.getByRole('button', { name: 'Profile', exact: true }).click()
-  await page.getByRole('searchbox', { name: 'Search' }).fill('sources')
+  await page.getByRole('searchbox', { name: 'Search' }).fill('research')
+  await expect(page.getByRole('option', { name: /research/ })).toBeVisible()
+  await page.keyboard.press('ArrowDown')
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
   await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('research')
@@ -74,7 +76,7 @@ test('real catalogs, nginx and Space enforce template validation and allow offli
     const unavailable = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/v1/profiles' && r.status() === 503)
     await page.getByRole('link', { name: 'Edit schedule' }).click()
     await unavailable
-    await expect(page.getByRole('button', { name: 'Profile', exact: true })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Profile', exact: true })).toBeEnabled()
     await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('research')
     await expect(page.getByText('Reconnecting…')).toBeVisible()
     await expect(page.getByRole('textbox', { name: 'Prompt', exact: true })).toHaveText(prompt, { useInnerText: true })
@@ -105,7 +107,7 @@ test('real catalogs, nginx and Space enforce template validation and allow offli
     const failedResume = page.waitForResponse((response) => response.request().method() === 'PATCH' && new URL(response.url()).pathname === `/api/v1/schedules/${id}`)
     await page.getByRole('button', { name: 'Resume', exact: true }).click()
     expect((await failedResume).status()).toBe(503)
-    await expect(page.getByText('Cannot check the template and services while Orpheus is unavailable. Try resuming later.')).toBeVisible()
+    await expect(page.getByText('Cannot check the profile, template and services while Orpheus is unavailable. Try resuming later.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeEnabled()
     expect((await (await page.request.get(`/api/v1/schedules/${id}`)).json()).status).toBe('paused')
     // Manual acceptance uses Space's database even while core is offline.

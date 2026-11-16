@@ -11,8 +11,8 @@ const editor = useScheduleEditor()
   <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
     <h1 class="section-title">{{ editor.id ? t('schedule.edit') : t('schedule.create') }}</h1>
     <RefreshStatus
-      :updated-at="null" :disconnected="editor.catalogs.disconnected.value || editor.template.disconnected.value"
-      :pending="editor.catalogs.pending.value || editor.template.pending.value" @refresh="editor.catalogs.refresh(); editor.template.refresh()"
+      :updated-at="null" :disconnected="editor.catalogs.disconnected.value || editor.template.disconnected.value || editor.profile.disconnected.value"
+      :pending="editor.catalogs.pending.value || editor.template.pending.value || editor.profile.pending.value" @refresh="editor.catalogs.refresh(); editor.template.refresh(); editor.profile.refresh()"
     />
   </div>
   <PageState
