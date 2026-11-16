@@ -1,8 +1,3 @@
-[templates.fixture]
-description = "Standard integration sandbox"
-[templates."reports:v2"]
-description = "Tools for reports"
-
 [profiles.default]
 description = "General agent"
 harness = "codex"

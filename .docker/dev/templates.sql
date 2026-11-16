@@ -1,4 +1,4 @@
--- Disposable catalog fixtures; independent of the TOML runtime allowlist.
+-- Disposable template catalog used for selection and new core sessions.
 INSERT INTO templates (id, template_name, tag, agentbox_template_id, description)
 VALUES
     ('33333333-3333-4333-8333-333333333333', 'fixture', NULL, 'fixture-standard', 'Standard integration sandbox'),
