@@ -3,12 +3,18 @@ type = "s3"
 bucket = "unused-fixture"
 region = "us-east-1"
 
-[services.gitlab]
-name = "GitLab"
-description = "Work with repositories and merge requests"
-env_from = ["GITLAB_HOST", "GITLAB_TOKEN"]
+[services.gitlab-registry]
+name = "GitLab Registry"
+description = "Pull container images"
+delivery = "direct"
+endpoint = "https://registry.example"
+credentials.token = { env = "GITLAB_TOKEN", as = "GITLAB_REGISTRY_TOKEN" }
+environment.GITLAB_REGISTRY_HOST = { from = "endpoint.host" }
 
 [services.orpheus-space]
 name = "Orpheus Space"
 description = "Manage scheduled tasks"
-env_from = ["ORPHEUS_SPACE_HOST", "ORPHEUS_SPACE_API_KEY"]
+delivery = "direct"
+endpoint = "https://space.example"
+credentials.key = { env = "ORPHEUS_SPACE_API_KEY" }
+environment.ORPHEUS_SPACE_HOST = { from = "endpoint" }

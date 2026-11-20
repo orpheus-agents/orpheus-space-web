@@ -364,8 +364,8 @@ export type components = {
             code: string;
             name: string;
             description: string;
-            /** @description Names of worker environment variables included in this service; never values. */
-            env_from: string[];
+            /** @description Sorted destination variable names supplied by this service to the client. */
+            env_names: string[];
         };
         Services: {
             items: components["schemas"]["Service"][];

@@ -40,7 +40,7 @@ function select(code: string, checked: boolean) {
       <dl class="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
         <template v-for="service in selected" :key="service.code">
           <dt class="text-muted">{{ service.name }}</dt>
-          <dd class="flex flex-wrap gap-x-3 font-mono"><span v-for="name in service.env_from" :key="name" class="break-all">{{ name }}</span></dd>
+          <dd class="flex flex-wrap gap-x-3 font-mono"><span v-for="name in service.env_names" :key="name" class="break-all">{{ name }}</span></dd>
         </template>
       </dl>
     </details>
