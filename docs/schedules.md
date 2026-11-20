@@ -26,7 +26,8 @@ requesting another run after reopening the card.
 
 Profile choices use server-side search and pagination. The configured default is
 resolved by its exact name, even when it is outside the first page. A profile is
-available only while both it and its LLM account are active. Existing choices
+available only while both it and its LLM account are active. Select a Codex or OpenCode
+profile and a sandbox template that includes its harness. Existing choices
 stay visible when unavailable or removed. Select an available profile and an
 active template before saving or resuming. Pausing and deleting remain available.
 

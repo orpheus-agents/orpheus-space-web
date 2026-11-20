@@ -3,10 +3,10 @@ import { ref, shallowRef } from 'vue'
 import { mount } from '@vue/test-utils'
 import ProfileField from './ProfileField.vue'
 import { profile } from '../test/fixtures'
-import type { Profile } from '../api/generated'
+import { ProfileHarness, type Profile } from '../api/generated'
 import type { ProfileState, useProfileOptions } from '../composables/useProfiles'
 
-function options(items: Profile[] = [profile({ id: '44444444-4444-4444-8444-444444444444', name: 'reports:v2', is_default: false, description: 'Tools for reports' })]) {
+function options(items: Profile[] = [profile({ id: '44444444-4444-4444-8444-444444444444', name: 'reports:v2', harness: ProfileHarness.opencode, is_default: false, description: 'Tools for reports' })]) {
   return {
     items: shallowRef(items), next: ref<string | null>(null), loaded: ref(true), pending: ref(false), loadingMore: ref(false),
     error: shallowRef<unknown>(null), moreError: shallowRef<unknown>(null),
@@ -18,7 +18,7 @@ function field(state: ProfileState, current: Profile | null, list = options(), m
 }
 const open = (wrapper: ReturnType<typeof field>) => wrapper.get('button[aria-haspopup]').trigger('click')
 
-it('pins an inactive current profile with a mark and lets the user choose only active ones', async () => {
+it('pins the inactive Codex profile and lets the user choose an active OpenCode profile', async () => {
   const wrapper = field('inactive', profile({ active: false }))
   expect(wrapper.text()).toContain('Inactive')
   expect(wrapper.text()).toContain('Choose an active profile to save changes.')
