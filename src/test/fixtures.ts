@@ -17,7 +17,7 @@ export function schedule(overrides: Partial<Schedule> = {}): Schedule {
     template: 'fixture',
     session_mode: SessionMode.reuse,
     owner_email: 'alice@example.com',
-    services: ['gitlab'],
+    services: ['gitlab-registry'],
     created_at: timestamp,
     updated_at: timestamp,
     next_run_at: timestamp,
@@ -86,7 +86,7 @@ export function templatePage(url: string, items = templates().items): Templates 
 
 export function services(): Services {
   return { items: [
-    { code: 'gitlab', name: 'GitLab', description: 'Work with repositories and merge requests', env_from: ['GITLAB_HOST', 'GITLAB_TOKEN'] },
-    { code: 'orpheus-space', name: 'Orpheus Space', description: 'Manage scheduled tasks', env_from: ['ORPHEUS_SPACE_HOST', 'ORPHEUS_SPACE_API_KEY'] },
+    { code: 'gitlab-registry', name: 'GitLab Registry', description: 'Pull container images', env_names: ['GITLAB_REGISTRY_HOST', 'GITLAB_REGISTRY_TOKEN'] },
+    { code: 'orpheus-space', name: 'Orpheus Space', description: 'Manage scheduled tasks', env_names: ['ORPHEUS_SPACE_API_KEY', 'ORPHEUS_SPACE_HOST'] },
   ] }
 }

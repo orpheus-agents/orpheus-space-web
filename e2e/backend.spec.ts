@@ -35,8 +35,8 @@ test('real catalogs, nginx and Space enforce catalog validation and allow offlin
   await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('research')
   await page.getByRole('button', { name: 'Sandbox template', exact: true }).click()
   await page.getByRole('option', { name: /reports:v2/ }).click()
-  await expect(page.getByRole('checkbox', { name: 'GitLab', exact: true })).not.toBeChecked()
-  await page.getByRole('checkbox', { name: 'GitLab', exact: true }).check()
+  await expect(page.getByRole('checkbox', { name: 'GitLab Registry', exact: true })).not.toBeChecked()
+  await page.getByRole('checkbox', { name: 'GitLab Registry', exact: true }).check()
   await page.getByLabel('Name', { exact: true }).fill('Browser integration')
   const prompt = '---\nsource: integration\n---\n## Instructions\n\nTest with **core offline**'
   await page.getByLabel('Prompt', { exact: true }).fill(prompt)
@@ -61,7 +61,7 @@ test('real catalogs, nginx and Space enforce catalog validation and allow offlin
   await expect(page.locator('.prose-output strong')).toHaveText('core offline')
   const id = new URL(page.url()).pathname.split('/').pop()!
   const stored = await (await page.request.get(`/api/v1/schedules/${id}`)).json()
-  expect(stored).toMatchObject({ profile: 'research', template: 'reports:v2', model: null, services: ['gitlab'] })
+  expect(stored).toMatchObject({ profile: 'research', template: 'reports:v2', model: null, services: ['gitlab-registry'] })
   const auth = await page.request.get('/api/v1/auth/session')
   expect((await auth.json()).write_access).toBe(true)
   expect((await page.request.patch(`/api/v1/schedules/${id}`, { data: { name: 'Forbidden' } })).status()).toBe(403)
@@ -100,7 +100,7 @@ test('real catalogs, nginx and Space enforce catalog validation and allow offlin
       expect(rejected.status()).toBe(503)
       expect((await rejected.json()).error.code).toBe('core_unavailable')
     }
-    expect(await (await page.request.get(`/api/v1/schedules/${id}`)).json()).toMatchObject({ owner_email: 'other@example.com', services: ['gitlab'], status: 'active' })
+    expect(await (await page.request.get(`/api/v1/schedules/${id}`)).json()).toMatchObject({ owner_email: 'other@example.com', services: ['gitlab-registry'], status: 'active' })
     await page.getByRole('link', { name: 'Cancel', exact: true }).click()
     await page.getByRole('button', { name: 'Reset context' }).click()
     await page.getByRole('button', { name: 'Confirm', exact: true }).click()

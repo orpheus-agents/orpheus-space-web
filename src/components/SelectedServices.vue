@@ -13,7 +13,7 @@ const entries = computed(() => props.codes.map((code) => ({ code, service: props
     <li v-for="(entry, index) in entries" :key="entry.code" class="min-w-0 break-words">
       <DescribedName v-if="entry.service" :name="entry.service.name" :description="entry.service.description">
         <ul :aria-label="t('services.env')" class="mt-2 space-y-0.5 border-t border-line pt-2 font-mono text-xs">
-          <li v-for="name in entry.service.env_from" :key="name" class="break-all">{{ name }}</li>
+          <li v-for="name in entry.service.env_names" :key="name" class="break-all">{{ name }}</li>
         </ul>
       </DescribedName>
       <span v-else-if="items !== null && !unavailable" class="text-muted">{{ t('services.missingCode', { code: entry.code }) }}</span>

@@ -196,7 +196,7 @@ it('offers every service including Space without selecting defaults', async () =
   session.value = { ...session.value, can_manage_all: false }
   await flushPromises()
   expect(state.form.services).toEqual([])
-  expect(wrapper.findAll('input[type="checkbox"]').map((node) => node.attributes('value'))).toEqual(['gitlab', 'orpheus-space'])
+  expect(wrapper.findAll('input[type="checkbox"]').map((node) => node.attributes('value'))).toEqual(['gitlab-registry', 'orpheus-space'])
   await wrapper.get('input[type="checkbox"][value="orpheus-space"]').setValue(true)
   expect(state.form.services).toEqual(['orpheus-space'])
 })
@@ -209,7 +209,7 @@ it('uses UI timezone once for creation and preserves the stored timezone when ed
   wrapper.unmount()
   const edit = await setup(true)
   expect(edit.state.form.timezone).toBe('Europe/Moscow')
-  expect(edit.state.form.services).toEqual(['gitlab'])
+  expect(edit.state.form.services).toEqual(['gitlab-registry'])
 })
 it('reuses the create key after failure and replaces it only for changed input', async () => {
   const { state, fetcher } = await setup()
@@ -466,8 +466,8 @@ it('shows profile/template validation at the corresponding field', async () => {
 
 it('preserves selected services through offline edits and maps service errors without dropping the draft', async () => {
   const { state, fetcher, notifications } = await setup(true, 'alice@example.com', null, true)
-  expect(state.form.services).toEqual(['gitlab'])
-  expect(wrapper.get<HTMLInputElement>('input[value="gitlab"]').element.checked).toBe(true)
+  expect(state.form.services).toEqual(['gitlab-registry'])
+  expect(wrapper.get<HTMLInputElement>('input[value="gitlab-registry"]').element.checked).toBe(true)
   const bodies: Record<string, unknown>[] = []
   fetcher.mockImplementation((_url: string, options?: RequestInit) => {
     if (options?.method) bodies.push(JSON.parse(options.body as string))
@@ -475,9 +475,9 @@ it('preserves selected services through offline edits and maps service errors wi
   })
   state.form.name = 'Keep this draft'
   await state.save()
-  expect(bodies[0]).toMatchObject({ name: 'Keep this draft', services: ['gitlab'] })
+  expect(bodies[0]).toMatchObject({ name: 'Keep this draft', services: ['gitlab-registry'] })
   expect(bodies[0]).not.toHaveProperty('env_from')
-  expect(state.form.services).toEqual(['gitlab'])
+  expect(state.form.services).toEqual(['gitlab-registry'])
   expect(notifications.toasts.value.at(-1)?.message).toContain('Could not save')
   fetcher.mockImplementation(() => Promise.resolve(Response.json({ error: {
     code: 'validation_error', details: [{ path: ['body', 'services'], code: 'invalid_value' }],
@@ -486,7 +486,7 @@ it('preserves selected services through offline edits and maps service errors wi
   await flushPromises()
   expect(wrapper.get('[role=alert]').text()).toBe('Choose available services or remove unavailable ones.')
   expect(state.form.name).toBe('Keep this draft')
-  await wrapper.get('input[value="gitlab"]').setValue(false)
+  await wrapper.get('input[value="gitlab-registry"]').setValue(false)
   expect(state.form.services).toEqual([])
   expect(state.fieldErrors.services).toBeUndefined()
 })
@@ -495,7 +495,7 @@ it('keeps the create idempotency key across catalog refreshes and service reorde
   const { state, fetcher } = await setup()
   state.form.name = 'New'
   state.form.prompt = 'Work'
-  state.form.services = ['orpheus-space', 'gitlab']
+  state.form.services = ['orpheus-space', 'gitlab-registry']
   const requests: RequestInit[] = []
   fetcher.mockImplementation((_url: string, options?: RequestInit) => {
     if (options?.method) requests.push(options)
@@ -503,21 +503,21 @@ it('keeps the create idempotency key across catalog refreshes and service reorde
   })
   await state.save()
   await state.catalogs.refresh()
-  state.form.services = ['gitlab', 'orpheus-space']
+  state.form.services = ['gitlab-registry', 'orpheus-space']
   await state.save()
   expect(requests[0].body).toBe(requests[1].body)
   expect((requests[0].headers as Record<string, string>)['Idempotency-Key']).toBe((requests[1].headers as Record<string, string>)['Idempotency-Key'])
-  expect(state.form.services).toEqual(['gitlab', 'orpheus-space'])
+  expect(state.form.services).toEqual(['gitlab-registry', 'orpheus-space'])
 })
 
 it('keeps stored services available to undo an offline removal without losing the draft', async () => {
   const { state } = await setup(true, 'alice@example.com', null, true)
   state.form.name = 'Unsaved title'
-  const input = () => wrapper.get<HTMLInputElement>('input[value="gitlab"]')
+  const input = () => wrapper.get<HTMLInputElement>('input[value="gitlab-registry"]')
   await input().setValue(false)
   expect(state.form.services).toEqual([])
   expect(input().element.checked).toBe(false)
   await input().setValue(true)
-  expect(state.form.services).toEqual(['gitlab'])
+  expect(state.form.services).toEqual(['gitlab-registry'])
   expect(state.form.name).toBe('Unsaved title')
 })
