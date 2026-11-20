@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
+import { ProfileHarness, type Profiles } from '../src/api/generated'
 const saml = !!process.env.INTEGRATION_SAML
 test.describe.configure({ mode: 'serial' })
 
@@ -20,7 +21,13 @@ test('real catalogs, nginx and Space enforce catalog validation and allow offlin
   await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('default')
   await expect(page.getByRole('button', { name: 'Sandbox template', exact: true })).toHaveText('fixture')
   await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  const researchPage = page.waitForResponse((r) => {
+    const url = new URL(r.url())
+    return url.pathname === '/api/v1/profiles' && url.searchParams.get('name_contains') === 'research'
+  })
   await page.getByRole('searchbox', { name: 'Search' }).fill('research')
+  const profiles: Profiles = await (await researchPage).json()
+  expect(profiles.items.find((profile) => profile.name === 'research')?.harness).toBe(ProfileHarness.opencode)
   await expect(page.getByRole('option', { name: /research/ })).toBeVisible()
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('ArrowDown')

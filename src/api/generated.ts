@@ -1199,7 +1199,8 @@ export enum SessionMode {
     reuse = "reuse"
 }
 export enum ProfileHarness {
-    codex = "codex"
+    codex = "codex",
+    opencode = "opencode"
 }
 export enum CodexProfileEffort {
     none = "none",
